@@ -1,0 +1,7 @@
+node_modules
+.DS_Store
+!babel.config.js
+*.code-workspace
+dist
+dist
+.vscode
