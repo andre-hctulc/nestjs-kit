@@ -71,14 +71,13 @@ export class ZodQueryParamPipe extends ZodPipe {
         maxLength,
     }: { optional?: boolean; minLength?: number; maxLength?: number } = {}) {
         let arrSchema = z.array(z.string());
-        let strSchema = z
-            .string()
-            .optional()
-            .transform((v) => [v]);
+        let strSchema = z.string();
 
         if (!optional) {
             strSchema = strSchema.refine((v) => v !== undefined) as any;
         }
+
+        strSchema.transform((v) => (v === undefined ? [] : [v]));
 
         if (minLength !== undefined) {
             arrSchema = arrSchema.min(minLength) as any;
