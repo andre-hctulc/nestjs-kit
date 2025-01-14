@@ -9,7 +9,10 @@ export class ZodPipe implements PipeTransform {
         const result = this.schema.safeParse(value);
 
         if (!result.success) {
-            throw new BadRequestException("Param validation failed");
+            throw new BadRequestException(`Param validation failed: ${result.error.message}`, {
+                // TODO check this in ExceptionsFilter and add set as detail or message?
+                cause: result.error,
+            });
         }
 
         return result.data;
@@ -27,7 +30,7 @@ export class ZodStrPipe extends ZodPipe {
 }
 
 /**
- * Parses all values to a boolean. 
+ * Parses all values to a boolean.
  * _"true"_ (case insensitive) and _true_ are considered true, everything else is false.
  */
 @Injectable()
