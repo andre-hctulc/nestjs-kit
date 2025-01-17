@@ -8,7 +8,6 @@
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
         "allowSyntheticDefaultImports": true,
-        "sourceMap": true,
         "strict": true,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
@@ -17,7 +16,7 @@
         "noImplicitThis": true,
         "alwaysStrict": true,
         "skipLibCheck": true,
-        "outDir": "dist",
+        "outDir": "dist"
     },
     "include": ["src/**/*"],
     "exclude": ["*.test.ts"]

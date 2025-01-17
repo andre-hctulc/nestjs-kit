@@ -6,14 +6,38 @@ export type ErrorBody = {
     statusCode: number;
 };
 
+interface ExceptionsFilterConfig {
+    /**
+     * Map an exception to an error body or an {@link HttpException}.
+     */
+    mapException?: (exception: unknown) => ErrorBody | HttpException | null | undefined | void;
+}
+
 /**
  * Maps all exceptions to a JSON response ({@link ErrorBody}).
  */
 @Catch()
 export class ExceptionsFilter implements ExceptionFilter {
+    private _config: ExceptionsFilterConfig;
+
+    constructor(config?: ExceptionsFilterConfig) {
+        this._config = config || {};
+    }
+
     catch(exception: unknown, host: ArgumentsHost) {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse();
+
+        const userMapped = this._config.mapException?.(exception);
+
+        if (userMapped) {
+            if (!(userMapped instanceof HttpException)) {
+                response.status(userMapped.statusCode).json(userMapped);
+                return;
+            }
+        } else {
+            exception = userMapped;
+        }
 
         if (exception instanceof HttpException) {
             const status = exception.getStatus();
