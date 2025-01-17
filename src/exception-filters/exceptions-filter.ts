@@ -34,9 +34,9 @@ export class ExceptionsFilter implements ExceptionFilter {
             if (!(userMapped instanceof HttpException)) {
                 response.status(userMapped.statusCode).json(userMapped);
                 return;
+            } else {
+                exception = userMapped;
             }
-        } else {
-            exception = userMapped;
         }
 
         if (exception instanceof HttpException) {
