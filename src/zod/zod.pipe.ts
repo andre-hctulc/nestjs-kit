@@ -63,6 +63,14 @@ export class ZodBoolPipe extends ZodPipe {
 /**
  * Parses a query parameter to a string array.
  */
+export const ZodQueryParamSchema = z
+    .string()
+    .transform((v) => (v ? [v] : []))
+    .or(z.array(z.string()));
+
+/**
+ * Parses a query parameter to a string array.
+ */
 @Injectable()
 export class ZodQueryParamPipe extends ZodPipe {
     constructor({
@@ -70,25 +78,24 @@ export class ZodQueryParamPipe extends ZodPipe {
         minLength,
         maxLength,
     }: { optional?: boolean; minLength?: number; maxLength?: number } = {}) {
-        let arrSchema = z.array(z.string());
-        let strSchema = z.string();
+        let schema: z.ZodSchema = ZodQueryParamSchema;
 
-        if (!optional) {
-            strSchema = strSchema.refine((v) => v !== undefined) as any;
+        if (minLength !== undefined || maxLength !== undefined) {
+            schema = schema.refine((v) => {
+                if (minLength && v.length < minLength) {
+                    return false;
+                }
+                if (maxLength && v.length > maxLength) {
+                    return false;
+                }
+                return true;
+            });
         }
 
-        strSchema.transform((v) => (v === undefined ? [] : [v]));
-
-        if (minLength !== undefined) {
-            arrSchema = arrSchema.min(minLength) as any;
-            strSchema.refine((v) => v.length >= minLength);
+        if (optional) {
+            schema = schema.optional() as any;
         }
 
-        if (maxLength !== undefined) {
-            arrSchema = arrSchema.max(maxLength) as any;
-            strSchema.refine((v) => v.length <= maxLength);
-        }
-
-        super(arrSchema.or(strSchema));
+        super(schema);
     }
 }
