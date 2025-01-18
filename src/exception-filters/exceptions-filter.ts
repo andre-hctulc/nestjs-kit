@@ -8,13 +8,15 @@ export type ErrorBody = {
 
 interface ExceptionsFilterConfig {
     /**
-     * Map an exception to an error body or an {@link HttpException}.
+     * Map errors to an error body or an {@link HttpException}.
      */
-    mapException?: (exception: unknown) => ErrorBody | HttpException | null | undefined | void;
+    mapErrors?: (exception: unknown) => ErrorBody | HttpException | null | undefined | void;
 }
 
 /**
  * Maps all exceptions to a JSON response ({@link ErrorBody}).
+ * {@link HttpException}s are mapped to their status code and message.
+ * All other exceptions are mapped to a 500 status code and "Internal server error" message.
  */
 @Catch()
 export class ExceptionsFilter implements ExceptionFilter {
@@ -26,13 +28,24 @@ export class ExceptionsFilter implements ExceptionFilter {
 
     catch(exception: unknown, host: ArgumentsHost) {
         const ctx = host.switchToHttp();
-        const response = ctx.getResponse();
+        const res = ctx.getResponse();
 
-        const userMapped = this._config.mapException?.(exception);
+        const send = (status: number, body: ErrorBody) => {
+            // express
+            if (typeof res.status === "function") {
+                return res.status(status).json(body);
+            }
+            // fastify
+            else {
+                return res.code(status).send(body);
+            }
+        };
+
+        const userMapped = this._config.mapErrors?.(exception);
 
         if (userMapped) {
             if (!(userMapped instanceof HttpException)) {
-                response.status(userMapped.statusCode).json(userMapped);
+                send(userMapped.statusCode, userMapped);
                 return;
             } else {
                 exception = userMapped;
@@ -60,9 +73,9 @@ export class ExceptionsFilter implements ExceptionFilter {
                 errBody.details = resObj;
             }
 
-            response.status(status).json(errBody);
+            send(status, errBody);
         } else {
-            response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+            send(HttpStatus.INTERNAL_SERVER_ERROR, {
                 statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                 message: "Internal server error",
                 details: {},
