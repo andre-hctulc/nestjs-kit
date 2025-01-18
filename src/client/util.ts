@@ -1,17 +1,9 @@
 import type { ErrorBody } from "../exception-filters/exceptions-filter.js";
+import type { ExceptionsFilter } from "../exception-filters/exceptions-filter.js";
 
-export async function parseErrorBody(response: Response): Promise<ErrorBody | null> {
-    try {
-        const body = await response.json();
-        if (isErrorBody(body)) {
-            return body;
-        }
-        return null;
-    } catch (e) {
-        return null;
-    }
-}
-
+/**
+ * Checks if the given value is an {@link ErrorBody} produced by the {@link ExceptionsFilter}.
+ */
 export function isErrorBody(body: unknown): body is ErrorBody {
     return (
         body &&
@@ -21,4 +13,25 @@ export function isErrorBody(body: unknown): body is ErrorBody {
         (body as any).details &&
         typeof (body as any).details === "object"
     );
+}
+
+/**
+ * Parses an {@link ErrorBody} produced by the {@link ExceptionsFilter}.
+ * @param value Either a raw value or a {@link Response} object.
+ */
+export async function parseErrorBody(value: any): Promise<ErrorBody | null> {
+    try {
+        if (value instanceof Response) {
+            if (!value.headers.get("content-type")?.includes("application/json")) {
+                return null;
+            }
+            value = await value.json();
+        }
+        if (isErrorBody(value)) {
+            return value;
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
 }
