@@ -65,8 +65,18 @@ export class ZodBoolPipe extends ZodPipe {
  */
 export const ZodQueryParamSchema = z
     .string()
-    .transform((v) => (v ? [v] : []))
+    .transform((v) => (v === undefined ? [] : [v]))
     .or(z.array(z.string()));
+
+export const ZodNumQueryParamSchema = ZodQueryParamSchema.transform((v) =>
+    v.map((item) => {
+        const num = Number(item);
+        if (isNaN(num)) {
+            throw new Error("Not not a number");
+        }
+        return num;
+    })
+);
 
 /**
  * Parses a query parameter to a string array.
