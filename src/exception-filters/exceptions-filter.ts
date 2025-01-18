@@ -31,13 +31,13 @@ export class ExceptionsFilter implements ExceptionFilter {
         const res = ctx.getResponse();
 
         const send = (status: number, body: ErrorBody) => {
-            // express
-            if (typeof res.status === "function") {
-                return res.status(status).json(body);
-            }
             // fastify
-            else {
+            if (typeof res.code === "function") {
                 return res.code(status).send(body);
+            }
+            // express
+            else {
+                return res.status(status).json(body);
             }
         };
 
