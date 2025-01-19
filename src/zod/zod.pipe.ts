@@ -68,6 +68,9 @@ export const ZodQueryParamSchema = z
     .transform((v) => (v === undefined ? [] : [v]))
     .or(z.array(z.string()));
 
+/**
+ * Parses a query parameter to a number array.
+ */
 export const ZodNumQueryParamSchema = ZodQueryParamSchema.transform((v) =>
     v.map((item) => {
         const num = Number(item);
@@ -75,6 +78,28 @@ export const ZodNumQueryParamSchema = ZodQueryParamSchema.transform((v) =>
             throw new Error("Not not a number");
         }
         return num;
+    })
+);
+
+/**
+ * Parses a query parameter to a boolean array.
+ */
+export const ZodBoolQueryParamSchema = ZodQueryParamSchema.transform((v) =>
+    v.map((item) => {
+        return item === "true" || item === "True" || item === "TRUE";
+    })
+);
+
+/**
+ * Parses a query parameter to a json array.
+ */
+export const UodJsonQueryParamSchema = ZodQueryParamSchema.transform((v) =>
+    v.map((item) => {
+        try {
+            return JSON.parse(item);
+        } catch (e) {
+            throw new Error("Invalid JSON", { cause: e });
+        }
     })
 );
 
