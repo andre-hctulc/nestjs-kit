@@ -5,7 +5,7 @@ import { FastifyRequest } from "fastify";
 export type ReadMultipartFile = MultipartFile & { buff: Buffer; size: number };
 
 async function toMap(req: FastifyRequest): Promise<Record<string, ReadMultipartFile[]>> {
-    const parts = await req.parts();
+    const parts = await req.files();
     const map: Record<string, ReadMultipartFile[]> = {};
 
     for await (const part of parts) {

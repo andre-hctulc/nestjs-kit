@@ -93,7 +93,7 @@ export const ZodBoolQueryParamSchema = ZodQueryParamSchema.transform((v) =>
 /**
  * Parses a query parameter to a json array.
  */
-export const UodJsonQueryParamSchema = ZodQueryParamSchema.transform((v) =>
+export const ZodJsonQueryParamSchema = ZodQueryParamSchema.transform((v) =>
     v.map((item) => {
         try {
             return JSON.parse(item);
