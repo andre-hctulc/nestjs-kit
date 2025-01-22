@@ -1,5 +1,6 @@
 import { ArgumentMetadata, BadRequestException, Injectable, PipeTransform } from "@nestjs/common";
 import z from "zod";
+import { ZodQueryParam } from "./schemas.js";
 
 @Injectable()
 export class ZodPipe implements PipeTransform {
@@ -63,49 +64,6 @@ export class ZodBoolPipe extends ZodPipe {
 /**
  * Parses a query parameter to a string array.
  */
-export const ZodQueryParamSchema = z
-    .string()
-    .transform((v) => (v === undefined ? [] : [v]))
-    .or(z.array(z.string()));
-
-/**
- * Parses a query parameter to a number array.
- */
-export const ZodNumQueryParamSchema = ZodQueryParamSchema.transform((v) =>
-    v.map((item) => {
-        const num = Number(item);
-        if (isNaN(num)) {
-            throw new Error("Not not a number");
-        }
-        return num;
-    })
-);
-
-/**
- * Parses a query parameter to a boolean array.
- */
-export const ZodBoolQueryParamSchema = ZodQueryParamSchema.transform((v) =>
-    v.map((item) => {
-        return item === "true" || item === "True" || item === "TRUE";
-    })
-);
-
-/**
- * Parses a query parameter to a json array.
- */
-export const ZodJsonQueryParamSchema = ZodQueryParamSchema.transform((v) =>
-    v.map((item) => {
-        try {
-            return JSON.parse(item);
-        } catch (e) {
-            throw new Error("Invalid JSON", { cause: e });
-        }
-    })
-);
-
-/**
- * Parses a query parameter to a string array.
- */
 @Injectable()
 export class ZodQueryParamPipe extends ZodPipe {
     constructor({
@@ -113,7 +71,7 @@ export class ZodQueryParamPipe extends ZodPipe {
         minLength,
         maxLength,
     }: { optional?: boolean; minLength?: number; maxLength?: number } = {}) {
-        let schema: z.ZodSchema = ZodQueryParamSchema;
+        let schema: z.ZodSchema = ZodQueryParam;
 
         if (minLength !== undefined || maxLength !== undefined) {
             schema = schema.refine((v) => {
