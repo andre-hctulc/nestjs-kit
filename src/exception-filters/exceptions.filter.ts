@@ -11,6 +11,8 @@ interface ExceptionsFilterConfig {
      * Map errors to an error body or an {@link HttpException}.
      */
     mapErrors?: (exception: unknown) => ErrorBody | HttpException | null | undefined | void;
+    logErrors?: boolean;
+    logErrorBodies?: boolean;
 }
 
 /**
@@ -31,6 +33,13 @@ export class ExceptionsFilter implements ExceptionFilter {
         const res = ctx.getResponse();
 
         const send = (status: number, body: ErrorBody) => {
+            if (this._config.logErrorBodies) {
+                console.error(body);
+            }
+            if (this._config.logErrors) {
+                console.error(exception);
+            }
+
             // fastify
             if (typeof res.code === "function") {
                 return res.code(status).send(body);

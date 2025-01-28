@@ -75,10 +75,10 @@ export class ZodQueryParamPipe extends ZodPipe {
 
         if (minLength !== undefined || maxLength !== undefined) {
             schema = schema.refine((v) => {
-                if (minLength && v.length < minLength) {
+                if (minLength !== undefined && v.length < minLength) {
                     return false;
                 }
-                if (maxLength && v.length > maxLength) {
+                if (maxLength !== undefined && v.length > maxLength) {
                     return false;
                 }
                 return true;

@@ -1,5 +1,5 @@
-import type { ErrorBody } from "../exception-filters/exceptions-filter.js";
-import type { ExceptionsFilter } from "../exception-filters/exceptions-filter.js";
+import type { ErrorBody } from "../exception-filters/exceptions.filter.js";
+import type { ExceptionsFilter } from "../exception-filters/exceptions.filter.js";
 
 /**
  * Checks if the given value is an {@link ErrorBody} produced by the {@link ExceptionsFilter}.

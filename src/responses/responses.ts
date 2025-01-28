@@ -29,7 +29,7 @@ export interface ResultResBody<T = any> extends Accepted {
     result: T;
 }
 
-export function createdBody(created_id: string, accepted = true): CreatedResBody {
+export function createdBody(created_id: string | string[], accepted = true): CreatedResBody {
     return { created_id, accepted };
 }
 
