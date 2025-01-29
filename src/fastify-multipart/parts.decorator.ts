@@ -35,7 +35,7 @@ async function toMap(req: FastifyRequest, skipFiles?: boolean): Promise<Record<s
 /**
  * **@fastify/multipart** parts decorator.
  *
- * Retrieves all uploaded in the request with a multipart form. Fils are read into memory.
+ * Retrieves all fields uploaded in the request with a multipart form. Files are loaded into memory.
  */
 export const Parts = createParamDecorator(
     async (_data: any, ctx: ExecutionContext): Promise<Record<string, any> | null> => {
@@ -52,7 +52,7 @@ export const Parts = createParamDecorator(
 /**
  * **@fastify/multipart** flat parts decorator.
  *
- * Retrieves all uploaded in the request with a multipart form. Fils are read into memory.
+ * Retrieves all fields uploaded in the request with a multipart form flattened. Files are loaded into memory.
  */
 export const FlatParts = createParamDecorator(
     async (_data: any, ctx: ExecutionContext): Promise<Record<string, any> | null> => {
