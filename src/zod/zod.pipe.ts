@@ -1,6 +1,6 @@
 import { ArgumentMetadata, BadRequestException, Injectable, PipeTransform } from "@nestjs/common";
 import z from "zod";
-import { ZodQueryParam } from "./schemas.js";
+import { ZodCommonQueryParams, ZodQueryParam } from "./schemas.js";
 
 @Injectable()
 export class ZodPipe implements PipeTransform {
@@ -89,6 +89,20 @@ export class ZodQueryParamPipe extends ZodPipe {
             schema = schema.optional() as any;
         }
 
+        super(schema);
+    }
+}
+
+/**
+ * Parses a query parameter to a number array.
+ */
+@Injectable()
+export class ZodCommonQueryParamsPipe extends ZodPipe {
+    constructor({ optional }: { optional?: boolean } = {}) {
+        let schema = ZodCommonQueryParams;
+        if (optional) {
+            schema = schema.optional() as any;
+        }
         super(schema);
     }
 }
