@@ -93,10 +93,12 @@ export type CommonQueryParams = z.infer<typeof ZodCommonQueryParams>;
 /**
  * Validates fastify multipart files
  */
-export const ZodMultipartFile = z.object({
-    name: z.string(),
-    size: z.number(),
-    type: z.string(),
-    encoding: z.string(),
-    buff: z.custom((v) => Buffer.isBuffer(v), { message: "Not binary" }),
-});
+export const ZodMultipartFile = z
+    .object({
+        name: z.string(),
+        size: z.number(),
+        type: z.string(),
+        encoding: z.string(),
+        buff: z.custom((v) => Buffer.isBuffer(v), { message: "Not binary" }),
+    })
+    .passthrough();
