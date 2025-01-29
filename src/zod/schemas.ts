@@ -95,9 +95,9 @@ export type CommonQueryParams = z.infer<typeof ZodCommonQueryParams>;
  */
 export const ZodMultipartFile = z
     .object({
-        name: z.string(),
+        filename: z.string(),
         size: z.number(),
-        type: z.string(),
+        mimetype: z.string(),
         encoding: z.string(),
         buff: z.custom((v) => Buffer.isBuffer(v), { message: "Not binary" }),
     })
