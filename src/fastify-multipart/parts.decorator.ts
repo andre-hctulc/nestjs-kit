@@ -1,7 +1,7 @@
 import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 import { FastifyRequest } from "fastify";
 
-async function toMap(req: FastifyRequest): Promise<Record<string, any[]>> {
+async function toMap(req: FastifyRequest, skipFiles?: boolean): Promise<Record<string, any[]>> {
     const parts = await req.parts();
 
     const result: Record<string, any> = {};
@@ -14,6 +14,10 @@ async function toMap(req: FastifyRequest): Promise<Record<string, any[]>> {
         if ("value" in part) {
             result[part.fieldname].push(part.value);
         } else {
+            if (skipFiles) {
+                continue;
+            }
+
             // All files must be read, otherwise the for loop will not fulfill
             if (!result[part.fieldname]) {
                 result[part.fieldname] = [];

@@ -1,18 +1,18 @@
 import { z } from "zod";
 
 /**
- * Parses a query parameter to a string array.
+ * Parses a query/form parameter to a string array.
  */
-export const ZodQueryParam = z
+export const ZodParam = z
     .string()
     .transform((v) => (v === undefined ? [] : [v]))
     .or(z.array(z.string()));
-export type QueryParam = z.infer<typeof ZodQueryParam>;
+export type Param = z.infer<typeof ZodParam>;
 
 /**
- * Parses a query parameter to a number array.
+ * Parses a query/form parameter to a number array.
  */
-export const ZodNumQueryParam = ZodQueryParam.transform((v) =>
+export const ZodNumParam = ZodParam.transform((v) =>
     v.map((item) => {
         const num = Number(item);
         if (isNaN(num)) {
@@ -23,24 +23,24 @@ export const ZodNumQueryParam = ZodQueryParam.transform((v) =>
 )
     .or(z.array(z.number()))
     .or(z.number().transform((v) => [v]));
-export type NumQueryParam = z.infer<typeof ZodNumQueryParam>;
+export type NumParam = z.infer<typeof ZodNumParam>;
 
 /**
- * Parses a query parameter to a boolean array.
+ * Parses a query/form parameter to a boolean array.
  */
-export const ZodBoolQueryParam = ZodQueryParam.transform((v) =>
+export const ZodBoolParam = ZodParam.transform((v) =>
     v.map((item) => {
         return item === "true" || item === "True" || item === "TRUE";
     })
 )
     .or(z.array(z.boolean()))
     .or(z.boolean().transform((v) => [v]));
-export type BoolQueryParam = z.infer<typeof ZodBoolQueryParam>;
+export type BoolParam = z.infer<typeof ZodBoolParam>;
 
 /**
  * Parses a query parameter to a json array.
  */
-export const ZodJsonQueryParam = ZodQueryParam.transform((v) =>
+export const ZodJsonParam = ZodParam.transform((v) =>
     v.map<any>((item) => {
         try {
             return JSON.parse(item);
@@ -49,22 +49,27 @@ export const ZodJsonQueryParam = ZodQueryParam.transform((v) =>
         }
     })
 );
-export type JsonQueryParam = z.infer<typeof ZodJsonQueryParam>;
+export type JsonParam = z.infer<typeof ZodJsonParam>;
 
 /**
  * Parses common query parameters.
  */
-export const ZodCommonQueryParams = z.object({
-    limit: ZodNumQueryParam.refine((arr) => arr.length > 0)
-        .transform(([num]) => num)
-        .refine((n) => n >= 0),
-    offset: ZodNumQueryParam.refine((arr) => arr.length > 0)
-        .transform(([num]) => num)
-        .refine((n) => n >= 0),
-    sort: ZodQueryParam.refine((arr) => arr.length > 0)
-        .transform(([str]) => str)
-        .or(z.record(z.any())),
-    order: ZodQueryParam.refine((arr) => arr.length > 0).transform(([str]) => str),
-    cursor: ZodQueryParam.refine((arr) => arr.length > 0).transform(([str]) => str),
-});
+export const ZodCommonQueryParams = z
+    .object({
+        limit: ZodNumParam.refine((arr) => arr.length > 0)
+            .transform(([num]) => num)
+            .refine((n) => n >= 0),
+        offset: ZodNumParam.refine((arr) => arr.length > 0)
+            .transform(([num]) => num)
+            .refine((n) => n >= 0),
+        skip: ZodNumParam.refine((arr) => arr.length > 0)
+            .transform(([num]) => num)
+            .refine((n) => n >= 0),
+        sort: ZodParam.refine((arr) => arr.length > 0)
+            .transform(([str]) => str)
+            .or(z.record(z.any())),
+        order: ZodParam.refine((arr) => arr.length > 0).transform(([str]) => str),
+        cursor: ZodParam.refine((arr) => arr.length > 0).transform(([str]) => str),
+    })
+    .strip();
 export type CommonQueryParams = z.infer<typeof ZodCommonQueryParams>;
