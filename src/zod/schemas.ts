@@ -39,10 +39,18 @@ export type NumSParam = z.infer<typeof ZodNumSParam>;
 
 /**
  * Parses a query/form parameter to a boolean array.
+ * 
+ * "true" and "on" (case insensitive) are considered true, everything else is false.
  */
 export const ZodBoolParam = ZodParam.transform((v) =>
     v.map((item) => {
-        return item === "true" || item === "True" || item === "TRUE";
+        const lower = item?.toLowerCase();
+
+        return (
+            lower === "true" ||
+            // enhanced html checkbox compatibility
+            lower === "on"
+        );
     })
 )
     .or(z.array(z.boolean()))
