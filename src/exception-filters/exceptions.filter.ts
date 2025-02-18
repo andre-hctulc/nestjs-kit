@@ -6,13 +6,23 @@ export type ErrorBody = {
     statusCode: number;
 };
 
+type ErrorLogLevel = "all" | "unexpected" | "none";
+
 interface ExceptionsFilterConfig {
     /**
      * Map errors to an error body or an {@link HttpException}.
      */
     mapErrors?: (exception: unknown) => ErrorBody | HttpException | null | undefined | void;
-    logErrors?: boolean;
-    logErrorBodies?: boolean;
+    /**
+     * `"unexpected"`: Log all non {@link HttpException} errors.
+     *
+     * `"all"`: Log all errors.
+     *
+     * `"none"`: Log no errors.
+     *
+     * @default "unexpected"
+     */
+    logErrors?: ErrorLogLevel;
 }
 
 /**
@@ -23,20 +33,19 @@ interface ExceptionsFilterConfig {
 @Catch()
 export class ExceptionsFilter implements ExceptionFilter {
     private _config: ExceptionsFilterConfig;
+    private _logErrors: ErrorLogLevel;
 
     constructor(config?: ExceptionsFilterConfig) {
         this._config = config || {};
+        this._logErrors = this._config.logErrors || "unexpected";
     }
 
     catch(exception: unknown, host: ArgumentsHost) {
         const ctx = host.switchToHttp();
         const res = ctx.getResponse();
 
-        const send = (status: number, body: ErrorBody) => {
-            if (this._config.logErrorBodies) {
-                console.error(body);
-            }
-            if (this._config.logErrors) {
+        const send = (status: number, body: ErrorBody, log: boolean) => {
+            if (log) {
                 console.error(exception);
             }
 
@@ -54,7 +63,7 @@ export class ExceptionsFilter implements ExceptionFilter {
 
         if (userMapped) {
             if (!(userMapped instanceof HttpException)) {
-                send(userMapped.statusCode, userMapped);
+                send(userMapped.statusCode, userMapped, this._logErrors === "all");
                 return;
             } else {
                 exception = userMapped;
@@ -82,13 +91,17 @@ export class ExceptionsFilter implements ExceptionFilter {
                 errBody.details = resObj;
             }
 
-            send(status, errBody);
+            send(status, errBody, this._logErrors === "all");
         } else {
-            send(HttpStatus.INTERNAL_SERVER_ERROR, {
-                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-                message: "Internal server error",
-                details: {},
-            });
+            send(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    message: "Internal server error",
+                    details: {},
+                },
+                this._logErrors !== "none"
+            );
         }
     }
 }
