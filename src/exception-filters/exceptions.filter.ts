@@ -1,4 +1,5 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from "@nestjs/common";
+import { FastifyRequest } from "fastify";
 
 export type ErrorBody = {
     message: string;
@@ -46,6 +47,9 @@ export class ExceptionsFilter implements ExceptionFilter {
 
         const send = (status: number, body: ErrorBody, log: boolean) => {
             if (log) {
+                const route = ctx.getRequest<FastifyRequest>().url;
+
+                console.log(`\n--< nestjs-kit >-- (${status}) Exception caught at "${route}":\n`);
                 console.error(exception);
             }
 
