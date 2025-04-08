@@ -1,18 +1,25 @@
 import { HttpException, HttpStatus } from "@nestjs/common";
-import type { ErrorBody } from "./http-exceptions.filter.js";
-
-/**
- * Maps known errors to a specific {@link ErrorBody} or {@link HttpException}.
- */
-export type ErrorMapper = (exception: unknown) => ErrorBody | HttpException | null | undefined | void | false;
+import { ErrorBody, ErrorMapper } from "./exceptions.types.js";
 
 /**
  * Maps an exception to an {@link ErrorBody}.
+ *
+ * If the exception is an instance of {@link HttpException}, it will be mapped to an {@link ErrorBody} with the status code and message from the exception.
+ * Otherwise it will be mapped to a generic internal server error {@link ErrorBody}.
+ *
+ * @param exception The exception to map.
+ * @param mapError Optional function to map the exception to a different error body or error.
+ *
  */
 export function mapException(exception: unknown, mapError?: ErrorMapper): ErrorBody {
     if (mapError) {
         const mapped = mapError(exception);
         if (mapped) {
+            // return mapped error body directly
+            if (!(mapped instanceof Error)) {
+                return mapped;
+            }
+            // otherwise update exception with mapped one
             exception = mapped;
         }
     }
@@ -22,7 +29,7 @@ export function mapException(exception: unknown, mapError?: ErrorMapper): ErrorB
         const resObj = exception.getResponse();
 
         const errBody: ErrorBody = {
-            statusCode: status,
+            status: status,
             message: exception.message,
             details: {},
         };
@@ -41,7 +48,7 @@ export function mapException(exception: unknown, mapError?: ErrorMapper): ErrorB
         return errBody;
     } else {
         return {
-            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+            status: HttpStatus.INTERNAL_SERVER_ERROR,
             message: "Internal server error",
             details: {},
         };

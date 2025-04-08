@@ -6,6 +6,7 @@ export function defaultLogLevel(): LogLevel {
     }
     return "error";
 }
+
 const PRE = "--<< nestjs-kit >>--";
 
 export function log(currentLogLevel: LogLevel, severity: Omit<LogLevel, "silent">, ...message: any[]): void {

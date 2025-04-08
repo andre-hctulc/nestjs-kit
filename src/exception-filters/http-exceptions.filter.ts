@@ -2,35 +2,21 @@ import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from
 import { FastifyRequest } from "fastify";
 import { LogLevel } from "../types.js";
 import { defaultLogLevel, log } from "../util/system.js";
-import { ErrorMapper, mapException } from "./exceptions.util.js";
-
-export type ErrorBody = {
-    message: string;
-    details: Record<string, any>;
-    statusCode: number;
-};
+import { mapException } from "./exceptions.util.js";
+import { ErrorBody, ErrorMapper } from "./exceptions.types.js";
 
 export interface ExceptionsFilterConfig {
     mapErrors?: ErrorMapper;
-    /**
-     * `"unexpected"`: Log all non {@link HttpException} errors.
-     *
-     * `"all"`: Log all errors.
-     *
-     * `"none"`: Log no errors.
-     *
-     * @default "unexpected"
-     */
     logLevel?: LogLevel;
 }
 
 /**
  * Maps all exceptions to a JSON response ({@link ErrorBody}).
- * {@link HttpException}s are mapped to their status code and message.
- * All other exceptions are mapped to a 500 status code and "Internal server error" message.
+ * 
+ * @see {@link ErrorBody} and {@link mapException} for more details.
  */
 @Catch()
-export class HttPExceptionsFilter implements ExceptionFilter {
+export class HttpExceptionsFilter implements ExceptionFilter {
     private _config: ExceptionsFilterConfig;
     private _logLevel: LogLevel;
 
@@ -50,11 +36,11 @@ export class HttPExceptionsFilter implements ExceptionFilter {
 
             // fastify
             if (typeof res.code === "function") {
-                return res.code(status).send(body);
+                return res.code(body.status).send(body);
             }
             // express
             else {
-                return res.status(status).json(body);
+                return res.status(body.status).json(body);
             }
         };
 
