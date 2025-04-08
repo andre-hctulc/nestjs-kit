@@ -10,7 +10,7 @@ export const ZodParam = z
 export type Param = z.infer<typeof ZodParam>;
 
 /**
- * Parses the first single query/form parameter to a string.
+ * Parses the first query/form parameter to a string.
  */
 export const ZodSParam = ZodParam.refine((v) => v.length > 0).transform((v) => v[0]);
 export type SParam = z.infer<typeof ZodSParam>;
@@ -39,7 +39,7 @@ export type NumSParam = z.infer<typeof ZodNumSParam>;
 
 /**
  * Parses a query/form parameter to a boolean array.
- * 
+ *
  * "true" and "on" (case insensitive) are considered true, everything else is false.
  */
 export const ZodBoolParam = ZodParam.transform((v) =>
@@ -94,8 +94,10 @@ export const ZodCommonQueryParams = z
         sort: ZodSParam.or(z.record(z.any())),
         order: ZodSParam,
         cursor: ZodSParam,
+        page: ZodNumSParam.refine((n) => n >= 0),
+        page_size: ZodNumSParam.refine((n) => n >= 0),
+        page_tag: ZodParam,
     })
-    .strip();
 export type CommonQueryParams = z.infer<typeof ZodCommonQueryParams>;
 
 /**

@@ -1,6 +1,6 @@
 {
-    "name": "@andre-hctulc/nestjs-kit",
-    "version": "0.0.24",
+    "name": "@edgeshiftlabs/nestjs-kit",
+    "version": "0.1.0",
     "description": "Some NestJS utility",
     "main": "dist/index.js",
     "type": "module",
@@ -13,6 +13,7 @@
     "scripts": {
         "tc": "tsc --noEmit",
         "tc:watch": "tsc --noEmit --watch",
+        "prebuild": "rm -rf dist",
         "build": "tsc"
     },
     "repository": {
