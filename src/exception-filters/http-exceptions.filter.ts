@@ -2,7 +2,7 @@ import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from
 import { FastifyRequest } from "fastify";
 import { LogLevel } from "../types.js";
 import { defaultLogLevel, log } from "../util/system.js";
-import { mapException } from "./exceptions.util.js";
+import { ErrorMapper, mapException } from "./exceptions.util.js";
 
 export type ErrorBody = {
     message: string;
@@ -10,12 +10,7 @@ export type ErrorBody = {
     statusCode: number;
 };
 
-export type ErrorMapper = (exception: unknown) => ErrorBody | HttpException | null | undefined | void;
-
 export interface ExceptionsFilterConfig {
-    /**
-     * Map known errors to a specific error response.
-     */
     mapErrors?: ErrorMapper;
     /**
      * `"unexpected"`: Log all non {@link HttpException} errors.
@@ -51,12 +46,7 @@ export class HttPExceptionsFilter implements ExceptionFilter {
         const send = (body: ErrorBody) => {
             const route = ctx.getRequest<FastifyRequest>().url;
 
-            log(
-                this._logLevel,
-                "error",
-                `Exception caught at "${route}":\n`,
-                exception
-            );
+            log(this._logLevel, "error", `Exception caught at "${route}":\n`, exception);
 
             // fastify
             if (typeof res.code === "function") {
@@ -68,7 +58,7 @@ export class HttPExceptionsFilter implements ExceptionFilter {
             }
         };
 
-        const errorBody = mapException(exception);
+        const errorBody = mapException(exception, this._config.mapErrors);
 
         send(errorBody);
     }

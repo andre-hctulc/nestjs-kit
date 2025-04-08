@@ -2,9 +2,21 @@ import { HttpException, HttpStatus } from "@nestjs/common";
 import type { ErrorBody } from "./http-exceptions.filter.js";
 
 /**
+ * Maps known errors to a specific {@link ErrorBody} or {@link HttpException}.
+ */
+export type ErrorMapper = (exception: unknown) => ErrorBody | HttpException | null | undefined | void | false;
+
+/**
  * Maps an exception to an {@link ErrorBody}.
  */
-export function mapException(exception: unknown): ErrorBody {
+export function mapException(exception: unknown, mapError?: ErrorMapper): ErrorBody {
+    if (mapError) {
+        const mapped = mapError(exception);
+        if (mapped) {
+            exception = mapped;
+        }
+    }
+
     if (exception instanceof HttpException) {
         const status = exception.getStatus();
         const resObj = exception.getResponse();
