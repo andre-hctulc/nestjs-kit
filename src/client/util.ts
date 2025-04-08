@@ -1,4 +1,4 @@
-import type { ErrorBody } from "../exception-filters/http-exceptions.filter.js";
+import { ErrorBody } from "../exception-filters/exceptions.types.js";
 import type { HttpExceptionsFilter } from "../exception-filters/http-exceptions.filter.js";
 
 /**
@@ -6,12 +6,12 @@ import type { HttpExceptionsFilter } from "../exception-filters/http-exceptions.
  */
 export function isErrorBody(body: unknown): body is ErrorBody {
     return (
-        body &&
+        !!body &&
         typeof body === "object" &&
-        typeof (body as any).message === "string" &&
-        typeof (body as any).statusCode === "number" &&
-        (body as any).details &&
-        typeof (body as any).details === "object"
+        typeof (body as ErrorBody).message === "string" &&
+        typeof (body as ErrorBody).status === "number" &&
+        !!(body as ErrorBody).details &&
+        typeof (body as ErrorBody).details === "object"
     );
 }
 
