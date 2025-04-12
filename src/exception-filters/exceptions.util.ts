@@ -12,15 +12,25 @@ import { ErrorBody, ErrorMapper } from "./exceptions.types.js";
  *
  */
 export function mapException(exception: unknown, mapError?: ErrorMapper): ErrorBody {
+    return mapExceptionWithInfo(exception, mapError).body;
+}
+
+export function mapExceptionWithInfo(
+    exception: unknown,
+    mapError?: ErrorMapper
+): { body: ErrorBody; userMapped: boolean } {
+    let userMapped = false;
+
     if (mapError) {
         const mapped = mapError(exception);
         if (mapped) {
             // return mapped error body directly
             if (!(mapped instanceof Error)) {
-                return mapped;
+                return { body: mapped, userMapped: true };
             }
             // otherwise update exception with mapped one
             exception = mapped;
+            userMapped = true;
         }
     }
 
@@ -45,12 +55,15 @@ export function mapException(exception: unknown, mapError?: ErrorMapper): ErrorB
             errBody.details = resObj;
         }
 
-        return errBody;
+        return { body: errBody, userMapped };
     } else {
         return {
-            status: HttpStatus.INTERNAL_SERVER_ERROR,
-            message: "Internal server error",
-            details: {},
+            body: {
+                status: HttpStatus.INTERNAL_SERVER_ERROR,
+                message: "Internal server error",
+                details: {},
+            },
+            userMapped: false,
         };
     }
 }

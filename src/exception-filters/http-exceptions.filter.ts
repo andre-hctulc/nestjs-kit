@@ -1,8 +1,8 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from "@nestjs/common";
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException } from "@nestjs/common";
 import { FastifyRequest } from "fastify";
 import { LogLevel } from "../types.js";
 import { defaultLogLevel, log } from "../util/system.js";
-import { mapException } from "./exceptions.util.js";
+import { mapExceptionWithInfo, mapException } from "./exceptions.util.js";
 import { ErrorBody, ErrorMapper } from "./exceptions.types.js";
 
 export interface ExceptionsFilterConfig {
@@ -12,7 +12,7 @@ export interface ExceptionsFilterConfig {
 
 /**
  * Maps all exceptions to a JSON response ({@link ErrorBody}).
- * 
+ *
  * @see {@link ErrorBody} and {@link mapException} for more details.
  */
 @Catch()
@@ -28,11 +28,19 @@ export class HttpExceptionsFilter implements ExceptionFilter {
     catch(exception: unknown, host: ArgumentsHost) {
         const ctx = host.switchToHttp();
         const res = ctx.getResponse();
+        const { body: errorBody, userMapped } = mapExceptionWithInfo(exception, this._config.mapErrors);
 
         const send = (body: ErrorBody) => {
             const route = ctx.getRequest<FastifyRequest>().url;
 
-            log(this._logLevel, "error", `Exception caught at "${route}":\n`, exception);
+            // Only log the exception if log mode verbose or if the exception is not a HttpException
+            // NOTE log() does'nt log when logLevel is silent
+            if (
+                (this._logLevel !== "error" && this._logLevel !== "info") ||
+                (!(exception instanceof HttpException) && !userMapped)
+            ) {
+                log(this._logLevel, "error", `Exception caught at "${route}":\n`, exception);
+            }
 
             // fastify
             if (typeof res.code === "function") {
@@ -43,8 +51,6 @@ export class HttpExceptionsFilter implements ExceptionFilter {
                 return res.status(body.status).json(body);
             }
         };
-
-        const errorBody = mapException(exception, this._config.mapErrors);
 
         send(errorBody);
     }
