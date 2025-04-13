@@ -3,17 +3,6 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { parse, serialize, SerializeOptions } from "cookie";
 import { randomUUID } from "crypto";
 
-declare module "fastify" {
-    interface FastifyRequest {
-        /**
-         * The client ID cookie value.
-         *
-         * This is set by the {@link ClientIdMiddleware}.
-         */
-        clientId?: string;
-    }
-}
-
 declare module "express" {
     interface Request {
         /**
@@ -38,6 +27,12 @@ declare module "express" {
  *
  * @param cookieName - The name of the cookie to set.
  * @param cookieOptions - Additional options for the cookie.
+ *
+ * ### Caveats
+ *
+ * For fastify we receive an internal request object in the middleware, so we cannot define _clientId_ as a property on the request itself.
+ * It can still be accessed wih `req.raw.clientId`. 
+ * Use {@link ClientIdMiddleware.fromRequest} to get the client ID from the request.
  */
 export abstract class ClientIdMiddleware implements NestMiddleware {
     /**
@@ -54,6 +49,16 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
         };
     }
 
+    /**
+     * Receives the client id from a request.
+     */
+    static fromRequest(req: any): string | undefined {
+        if ("raw" in req) {
+            return (req.raw as any)?.clientId;
+        }
+        return req.clientId;
+    }
+
     constructor(private cookieName: string, private cookieOptions: Partial<SerializeOptions> = {}) {}
 
     // TODO May need adjustments for express
@@ -67,21 +72,20 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
         const cookies = parse(req.headers.cookie || "");
         clientId = cookies[this.cookieName];
 
-        if (clientId) {
-            (req as any).clientId = clientId;
-            return next();
+        if (!clientId) {
+            clientId = randomUUID();
+
+            const setCookie = serialize(this.cookieName, randomUUID(), {
+                httpOnly: true,
+                secure: true,
+                path: "/",
+                ...this.cookieOptions,
+            });
+
+            res.appendHeader("Set-Cookie", setCookie);
         }
 
-        clientId = randomUUID();
-        const setCookie = serialize(this.cookieName, randomUUID(), {
-            httpOnly: true,
-            secure: true,
-            path: "/",
-            ...this.cookieOptions,
-        });
-
         (req as any).clientId = clientId;
-        res.appendHeader("Set-Cookie", setCookie);
 
         next();
     }
