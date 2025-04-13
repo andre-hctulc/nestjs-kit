@@ -56,22 +56,32 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
 
     constructor(private cookieName: string, private cookieOptions: Partial<SerializeOptions> = {}) {}
 
+    // TODO May need adjustments for express
     use(req: FastifyRequest["raw"], res: FastifyReply["raw"], next: () => void) {
-        // @fastify/cookie helpers not available for raw request and reply,
-        // so we use cookie package directly
+        let clientId: string | undefined = (req as any).clientId;
+
+        if (clientId) {
+            return next();
+        }
 
         const cookies = parse(req.headers.cookie || "");
-        const clientId = cookies[this.cookieName];
+        clientId = cookies[this.cookieName];
 
-        if (!clientId) {
-            const setCookie = serialize(this.cookieName, randomUUID(), {
-                httpOnly: true,
-                secure: true,
-                path: "/",
-                ...this.cookieOptions,
-            });
-            res.appendHeader("Set-Cookie", setCookie);
+        if (clientId) {
+            (req as any).clientId = clientId;
+            return next();
         }
+
+        clientId = randomUUID();
+        const setCookie = serialize(this.cookieName, randomUUID(), {
+            httpOnly: true,
+            secure: true,
+            path: "/",
+            ...this.cookieOptions,
+        });
+
+        (req as any).clientId = clientId;
+        res.appendHeader("Set-Cookie", setCookie);
 
         next();
     }
