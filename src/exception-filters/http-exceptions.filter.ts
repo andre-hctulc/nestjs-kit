@@ -7,6 +7,11 @@ import { ErrorBody, ErrorMapper } from "./exceptions.types.js";
 
 export interface ExceptionsFilterConfig {
     mapErrors?: ErrorMapper;
+    /**
+     * "verbose": Log all exceptions
+     * 
+     * "error" | "info": Log only unmapped and non http errors
+     */
     logLevel?: LogLevel;
 }
 

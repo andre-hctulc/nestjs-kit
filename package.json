@@ -25,6 +25,7 @@
     "license": "ISC",
     "devDependencies": {
         "@fastify/multipart": "^6.0.1",
+        "@types/express": "^5.0.1",
         "@types/node": "^22.7.4",
         "fastify": "^4.29.0",
         "zod": "^3.24.1"
