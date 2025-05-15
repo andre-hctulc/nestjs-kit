@@ -1,8 +1,7 @@
-import { ErrorBody } from "../exception-filters/exceptions.types.js";
-import type { HttpExceptionsFilter } from "../exception-filters/http-exceptions.filter.js";
+import { ErrorBody } from "./index.js";
 
 /**
- * Checks if the given value is an {@link ErrorBody} produced by the {@link HttpExceptionsFilter}.
+ * Checks if the given value is an {@link ErrorBody} produced by the `HttpExceptionsFilter`.
  */
 export function isErrorBody(body: unknown): body is ErrorBody {
     return (
@@ -16,7 +15,7 @@ export function isErrorBody(body: unknown): body is ErrorBody {
 }
 
 /**
- * Parses an {@link ErrorBody} produced by the {@link HttpExceptionsFilter}.
+ * Parses an {@link ErrorBody} produced by the  `HttpExceptionsFilter`.
  * @param value Either a raw value or a {@link Response} object.
  */
 export async function parseErrorBody(value: any): Promise<ErrorBody | null> {

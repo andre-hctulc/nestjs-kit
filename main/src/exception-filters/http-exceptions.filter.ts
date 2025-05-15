@@ -9,7 +9,7 @@ export interface ExceptionsFilterConfig {
     mapErrors?: ErrorMapper;
     /**
      * "verbose": Log all exceptions
-     * 
+     *
      * "error" | "info": Log only unmapped and non http errors
      */
     logLevel?: LogLevel;
@@ -33,6 +33,7 @@ export class HttpExceptionsFilter implements ExceptionFilter {
     catch(exception: unknown, host: ArgumentsHost) {
         const ctx = host.switchToHttp();
         const res = ctx.getResponse();
+        const req = ctx.getRequest<FastifyRequest>();
         const { body: errorBody, userMapped } = mapExceptionWithInfo(exception, this._config.mapErrors);
 
         const send = (body: ErrorBody) => {
@@ -44,7 +45,7 @@ export class HttpExceptionsFilter implements ExceptionFilter {
                 (this._logLevel !== "error" && this._logLevel !== "info") ||
                 (!(exception instanceof HttpException) && !userMapped)
             ) {
-                log(this._logLevel, "error", `Exception caught at "${route}":\n`, exception);
+                log(this._logLevel, "error", `[${req.method}] Exception caught at "${route}":\n`, exception);
             }
 
             // fastify

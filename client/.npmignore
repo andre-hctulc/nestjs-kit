@@ -1,0 +1,12 @@
+test
+babel.config.js
+*.code-workspace
+tsconfig.json
+src
+.vscode
+.DS_Store
+index.ts
+docs
+scripts
+.parcelrc
+.parcel-cache

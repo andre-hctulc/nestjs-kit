@@ -3,5 +3,5 @@ node_modules
 !babel.config.js
 *.code-workspace
 dist
-dist
 .vscode
+.parcel-cache

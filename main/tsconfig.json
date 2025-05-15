@@ -15,7 +15,7 @@
         "noImplicitThis": true,
         "alwaysStrict": true,
         "skipLibCheck": true,
-        "outDir": "dist"
+        "outDir": "main/dist"
     },
     "include": ["src/**/*"],
     "exclude": ["*.test.ts"]

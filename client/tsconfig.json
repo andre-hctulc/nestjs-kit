@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "module": "NodeNext",
+        "target": "ES2022",
+        "moduleResolution": "NodeNext",
+        "declaration": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "isolatedModules": true,
+        "noImplicitAny": true,
+        "noImplicitThis": true,
+        "alwaysStrict": true,
+        "skipLibCheck": true,
+        "outDir": "dist"
+    },
+    "include": ["src/index.ts"],
+    "exclude": ["*.test.ts"]
+}

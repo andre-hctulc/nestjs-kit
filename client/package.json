@@ -1,0 +1,28 @@
+{
+    "name": "@dre44/nestjs-kit-client",
+    "version": "0.0.1",
+    "description": "nestjs-kit Client",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "source": "src/index.ts",
+    "type": "module",
+    "scripts": {
+        "tc": "tsc --noEmit",
+        "tc:watch": "tsc --noEmit --watch",
+        "prebuild": "rm -rf dist",
+        "build": "parcel build --no-source-maps"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/andre-hctulc/nestjs-kit.git"
+    },
+    "keywords": [],
+    "author": "André Thomas",
+    "license": "ISC",
+    "devDependencies": {
+        "@parcel/packager-ts": "^2.15.0",
+        "@parcel/transformer-typescript-types": "^2.15.0",
+        "parcel": "^2.15.0",
+        "typescript": "^5.8.3"
+    }
+}
