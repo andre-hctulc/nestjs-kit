@@ -4,3 +4,4 @@ export * from "./pipes/index.js";
 export * from "./decorators/index.js";
 export * from "./util/index.js";
 export * from "./middleware/index.js";
+export * from "./guards/index.js";

@@ -1,5 +1,5 @@
 import { ArgumentMetadata, BadRequestException, Injectable, PipeTransform } from "@nestjs/common";
-import z from "zod";
+import { z } from "zod";
 
 @Injectable()
 export class ZodPipe implements PipeTransform {
