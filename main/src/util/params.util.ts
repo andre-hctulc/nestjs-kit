@@ -17,7 +17,7 @@ export function createSearchParams(
 /**
  * String arrays are joined with a comma
  */
-export function createRawSearchParams(
+export function normalizeParams(
     paramsObj: Record<string, string | undefined | string[]>
 ): Record<string, string> {
     const obj: Record<string, string> = {};
@@ -31,7 +31,7 @@ export function createRawSearchParams(
     return obj;
 }
 
-export function singleSearchParam(value: string | string[] | undefined): string | undefined {
+export function paramValue(value: string | string[] | undefined): string | undefined {
     if (Array.isArray(value)) {
         return value[0];
     } else {
