@@ -38,3 +38,12 @@ export function paramValue(value: string | string[] | undefined): string | undef
         return value;
     }
 }
+export function paramValues(value: string | string[] | undefined): string[] {
+    if (Array.isArray(value)) {
+        return value;
+    } else if (value !== undefined) {
+        return [value];
+    } else {
+        return [];
+    }
+}
