@@ -19,7 +19,7 @@ import type {
     ChannelSendResult,
 } from "./channels.types.js";
 import { randomUUID } from "crypto";
-import { MaybePromise } from "../util/system-types.js";
+import { MaybePromise } from "../common/util/system/system-types.js";
 
 declare module "socket.io" {
     interface Socket {

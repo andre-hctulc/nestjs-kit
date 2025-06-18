@@ -26,3 +26,7 @@ export function log(currentLogLevel: LogLevel, severity: Omit<LogLevel, "silent"
 
     logger(PRE, "\n", ...message);
 }
+
+export function hasKeys(obj: object): boolean {
+    return Object.keys(obj).length > 0;
+}
