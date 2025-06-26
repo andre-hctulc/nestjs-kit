@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const ChannelMessageSchema = z.object({
     /**
@@ -16,7 +16,7 @@ export const ChannelMessageSchema = z.object({
     type: z.string(),
     status: z.number().optional(),
     error: z.boolean().optional(),
-    body: z.record(z.any()),
+    body: z.record(z.string(), z.any()),
     /**
      * Generic target for the event.
      */
@@ -27,4 +27,3 @@ export const ChannelMessageSchema = z.object({
     source: z.string().optional(),
 });
 export type ChannelMessage = z.infer<typeof ChannelMessageSchema>;
-

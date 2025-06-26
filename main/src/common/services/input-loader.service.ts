@@ -1,14 +1,17 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import path from "path";
 import { readFileSync } from "fs";
-import { hasKeys } from "../util/system/system-util.js";
 
 @Injectable()
 export class InputLoaderService {
-    private baseDir: string = "./";
+    private baseDir: string = path.resolve();
 
-    setBaseDir(dir: string): void {
+    setBaseDir(dir: string): this {
+        if (!path.isAbsolute(dir)) {
+            throw new Error("Absolute path expected for base directory");
+        }
         this.baseDir = dir;
+        return this;
     }
 
     private staticTemplates: Record<string, string> = {};
@@ -20,27 +23,26 @@ export class InputLoaderService {
         }, text);
     }
 
-    loadTemplate(relPath: string, params?: Record<string, any>, forceCache = false): string {
-        if (path.isAbsolute(relPath)) {
-            throw new InternalServerErrorException("InputLoader: Relative path expected");
+    loadTemplate(relPath: string, params?: Record<string, any>, useCache = false): string {
+        if (path.isAbsolute(relPath) || relPath.includes("..")) {
+            throw new Error("InputLoader: Relative path expected without '..'");
         }
 
-        const staticTemplate = !params || !hasKeys(params);
-        const cacheKey = staticTemplate
-            ? relPath
-            : forceCache
-            ? `${relPath}-${JSON.stringify(params)}`
-            : undefined;
+        const cacheKey = useCache ? `${relPath}${params ? "-p-" + JSON.stringify(params) : ""}` : undefined;
 
         if (cacheKey && this.staticTemplates[cacheKey]) {
             return this.staticTemplates[cacheKey];
         }
 
         const p = path.join(this.baseDir, relPath);
-        const fileContent = readFileSync(p, "utf-8");
-        if (!fileContent) {
-            throw new InternalServerErrorException("InputLoader: Failed to load file");
+        let fileContent: string;
+
+        try {
+            fileContent = readFileSync(p, "utf-8");
+        } catch (err) {
+            throw new Error(`InputLoader: Error reading file at ${p}: ${(err as Error).message}`);
         }
+
         const text = params ? this.injectParams(fileContent, params) : fileContent;
 
         if (cacheKey) {
@@ -48,5 +50,9 @@ export class InputLoaderService {
         }
 
         return text;
+    }
+
+    loadTemplateWithCache(relPath: string, params?: Record<string, any>): string {
+        return this.loadTemplate(relPath, params, true);
     }
 }

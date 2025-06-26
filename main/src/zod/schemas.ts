@@ -1,6 +1,6 @@
-import { MultipartFile } from "@fastify/multipart";
-import { z, ZodType } from "zod";
-import { ReadMultipartFile } from "../fastify-multipart/file-parts.decorators.js";
+import type { MultipartFile } from "@fastify/multipart";
+import { z, ZodType } from "zod/v4";
+import type { ReadMultipartFile } from "../fastify-multipart/file-parts.decorators.js";
 
 /**
  * Parses a query/form parameter to a string array.
@@ -88,7 +88,7 @@ export const ZodCommonQueryParams = z.object({
     limit: ZodNumSParam.refine((n) => n >= 0),
     offset: ZodNumSParam.refine((n) => n >= 0),
     skip: ZodNumSParam.refine((n) => n >= 0),
-    sort: ZodSParam.or(z.record(z.any())),
+    sort: ZodSParam.or(z.record(z.string(), z.any())),
     order: ZodSParam,
     cursor: ZodSParam,
     page: ZodNumSParam.refine((n) => n >= 0),
@@ -102,12 +102,10 @@ export type CommonQueryParams = z.infer<typeof ZodCommonQueryParams>;
  *
  * The part is read in multipart context, otherwise it's up to the user when to read the file.
  */
-export const ZodMultipartFile: ZodType<MultipartFile | ReadMultipartFile> = z
-    .object({
-        filename: z.string(),
-        size: z.number(),
-        mimetype: z.string(),
-        encoding: z.string(),
-        buff: z.custom((v) => Buffer.isBuffer(v), { message: "Not binary" }),
-    })
-    .passthrough() as any;
+export const ZodMultipartFile: ZodType<MultipartFile | ReadMultipartFile> = z.looseObject({
+    filename: z.string(),
+    size: z.number(),
+    mimetype: z.string(),
+    encoding: z.string(),
+    buff: z.custom((v) => Buffer.isBuffer(v), { message: "Not binary" }),
+}) as any;
