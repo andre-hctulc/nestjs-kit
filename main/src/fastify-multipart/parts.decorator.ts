@@ -1,6 +1,6 @@
 import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 import { FastifyRequest } from "fastify";
-import { readFilePart } from "./fastify-multipart.util.js";
+import { flatten, readFilePart } from "./fastify-multipart.util.js";
 import { BusboyConfig } from "busboy";
 
 async function toMap(
@@ -28,7 +28,7 @@ async function toMap(
         }
     }
 
-    return result;
+    return flatten(result);
 }
 
 /**
@@ -54,37 +54,3 @@ export const PartsOpts = (options: Omit<BusboyConfig, "headers">) => {
  * Retrieves all fields uploaded in the request with a multipart form. Files are loaded into memory.
  */
 export const Parts = PartsOpts({});
-
-/**
- * {@link FileParts} decorator with options.
- */
-export const FlatPartsOpts = (options: Omit<BusboyConfig, "headers">) => {
-    return createParamDecorator(
-        async (_data: any, ctx: ExecutionContext): Promise<Record<string, any> | null> => {
-            const req: FastifyRequest = ctx.switchToHttp().getRequest();
-
-            if (!req.isMultipart()) {
-                return null;
-            }
-
-            let map: any = await toMap(req, options);
-
-            for (const key in map) {
-                if (map[key].length > 0) {
-                    map[key] = map[key][0];
-                } else {
-                    map[key] = undefined;
-                }
-            }
-
-            return map;
-        }
-    );
-};
-
-/**
- * **@fastify/multipart** flat parts decorator.
- *
- * Retrieves all fields uploaded in the request with a multipart form flattened. Files are loaded into memory.
- */
-export const FlatParts = FlatPartsOpts({});
