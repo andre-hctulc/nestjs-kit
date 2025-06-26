@@ -30,3 +30,10 @@ export function log(currentLogLevel: LogLevel, severity: Omit<LogLevel, "silent"
 export function hasKeys(obj: object): boolean {
     return Object.keys(obj).length > 0;
 }
+
+export function isPlainObject(obj: unknown): obj is object {
+    return (
+        Object.prototype.toString.call(obj) === "[object Object]" &&
+        (Object.getPrototypeOf(obj) === Object.prototype || Object.getPrototypeOf(obj) === null)
+    );
+}

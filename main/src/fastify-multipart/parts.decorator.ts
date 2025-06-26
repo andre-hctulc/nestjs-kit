@@ -2,6 +2,7 @@ import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 import { FastifyRequest } from "fastify";
 import { flatten, readFilePart } from "./fastify-multipart.util.js";
 import { BusboyConfig } from "busboy";
+import { isPlainObject } from "../common/util/system/system-util.js";
 
 async function toMap(
     req: FastifyRequest,
@@ -33,13 +34,18 @@ async function toMap(
 
 /**
  * {@link Parts} decorator with options.
+ *
+ * Use `strict: true` to ensure that only multipart requests are processed, otherwise it will return the body if it is a plain object.
  */
-export const PartsOpts = (options: Omit<BusboyConfig, "headers">) => {
+export const PartsOpts = (options: Omit<BusboyConfig, "headers"> & { strict?: boolean }) => {
     return createParamDecorator(
         async (_data: any, ctx: ExecutionContext): Promise<Record<string, any> | null> => {
             const req: FastifyRequest = ctx.switchToHttp().getRequest();
 
             if (!req.isMultipart()) {
+                if (!options.strict && isPlainObject(req.body)) {
+                    return req.body;
+                }
                 return null;
             }
 
