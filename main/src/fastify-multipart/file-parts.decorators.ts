@@ -1,8 +1,9 @@
 import { MultipartFile } from "@fastify/multipart";
 import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 import { FastifyRequest } from "fastify";
-import { flatten, readFilePart } from "./fastify-multipart.util.js";
+import { parseFilePart } from "./fastify-multipart.util.js";
 import { BusboyConfig } from "busboy";
+import { flatten } from "./fastify-multipart-system.util.js";
 
 export type ReadMultipartFile = MultipartFile & { buff: Buffer; size: number };
 
@@ -26,7 +27,7 @@ async function toMap(
             }
 
             // The files must be read (toBuffer() or read part.file stream) otherwise the async iterator will not fulfill!
-            map[part.fieldname].push(await readFilePart(part));
+            map[part.fieldname].push(await parseFilePart(part));
         }
     }
 
