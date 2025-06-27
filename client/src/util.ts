@@ -1,4 +1,4 @@
-import { ErrorBody } from "./index.js";
+import type { ErrorBody } from "./index.js";
 
 /**
  * Checks if the given value is an {@link ErrorBody} produced by the `HttpExceptionsFilter`.
