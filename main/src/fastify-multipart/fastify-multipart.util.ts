@@ -8,5 +8,5 @@ export async function parseFilePart(part: Multipart): Promise<ReadMultipartFile>
 }
 
 export function isFilePart(part: unknown): part is ReadMultipartFile {
-    return Buffer.isBuffer((part as any)?.buff);
+    return Buffer.isBuffer((part as ReadMultipartFile)?.buff);
 }

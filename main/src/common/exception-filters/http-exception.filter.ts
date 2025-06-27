@@ -5,7 +5,7 @@ import { ErrorBody, ErrorMapper } from "./exceptions.types.js";
 import { LogLevel } from "../util/types.js";
 import { defaultLogLevel, log } from "../util/system/system-util.js";
 
-export interface ExceptionsFilterConfig {
+export interface ExceptionFilterConfig {
     mapErrors?: ErrorMapper;
     /**
      * "verbose": Log all exceptions
@@ -21,11 +21,11 @@ export interface ExceptionsFilterConfig {
  * @see {@link ErrorBody} and {@link mapException} for more details.
  */
 @Catch()
-export class HttpExceptionsFilter implements ExceptionFilter {
-    private _config: ExceptionsFilterConfig;
+export class HttpExceptionFilter implements ExceptionFilter {
+    private _config: ExceptionFilterConfig;
     private _logLevel: LogLevel;
 
-    constructor(config?: ExceptionsFilterConfig) {
+    constructor(config?: ExceptionFilterConfig) {
         this._config = config || {};
         this._logLevel = this._config.logLevel || defaultLogLevel();
     }

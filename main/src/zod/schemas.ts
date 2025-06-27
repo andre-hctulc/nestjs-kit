@@ -1,6 +1,4 @@
-import type { MultipartFile } from "@fastify/multipart";
-import { z, ZodType } from "zod/v4";
-import type { ReadMultipartFile } from "../fastify-multipart/file-parts.decorators.js";
+import { z } from "zod/v4";
 
 /**
  * Parses a query/form parameter to a string array.
@@ -68,18 +66,18 @@ export type BoolSParam = z.infer<typeof ZodBoolSParam>;
 /**
  * Parses a query parameter as json.
  */
-export const ZodJsonParam = ZodParam.transform((v) =>
+export const ZodJSONParam = ZodParam.transform((v) =>
     v.map<any>((item) => {
         return JSON.parse(item);
     })
 );
-export type JsonParam = z.infer<typeof ZodJsonParam>;
+export type JSONParam = z.infer<typeof ZodJSONParam>;
 
 /**
  * Parses the first query parameter as json.
  */
-export const ZodJsonSParam = ZodJsonParam.refine((v) => v.length > 0).transform((v) => v[0]);
-export type JsonSParam = z.infer<typeof ZodJsonSParam>;
+export const ZodJSONSParam = ZodJSONParam.refine((v) => v.length > 0).transform((v) => v[0]);
+export type JSONSParam = z.infer<typeof ZodJSONSParam>;
 
 /**
  * Parses common query parameters.
@@ -96,16 +94,3 @@ export const ZodCommonQueryParams = z.object({
     page_tag: ZodParam,
 });
 export type CommonQueryParams = z.infer<typeof ZodCommonQueryParams>;
-
-/**
- * Validates fastify multipart files
- *
- * The part is read in multipart context, otherwise it's up to the user when to read the file.
- */
-export const ZodMultipartFile: ZodType<MultipartFile | ReadMultipartFile> = z.looseObject({
-    filename: z.string(),
-    size: z.number(),
-    mimetype: z.string(),
-    encoding: z.string(),
-    buff: z.custom((v) => Buffer.isBuffer(v), { message: "Not binary" }),
-}) as any;
