@@ -21,11 +21,6 @@ async function toMap(
 
         if ("value" in part) {
         } else {
-            // All files must be read, otherwise the for loop will not fulfill
-            if (!map[part.fieldname]) {
-                map[part.fieldname] = [];
-            }
-
             // The files must be read (toBuffer() or read part.file stream) otherwise the async iterator will not fulfill!
             map[part.fieldname].push(await parseFilePart(part));
         }

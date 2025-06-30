@@ -16,7 +16,7 @@ export const FilePartOpts = (options: Omit<BusboyConfig, "headers">) => {
 
         const file = await req.file(options);
 
-        return file;
+        return file || null;
     });
 };
 

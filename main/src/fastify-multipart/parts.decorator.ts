@@ -10,7 +10,7 @@ async function toMap(
     options: Omit<BusboyConfig, "headers">
 ): Promise<Record<string, any[]>> {
     const parts = await req.parts(options);
-    const result: Record<string, any> = {};
+    const result: Record<string, any[]> = {};
 
     for await (const part of parts) {
         if (!result[part.fieldname]) {
@@ -20,11 +20,6 @@ async function toMap(
         if ("value" in part) {
             result[part.fieldname].push(part.value);
         } else {
-            // All files must be read, otherwise the for loop will not fulfill
-            if (!result[part.fieldname]) {
-                result[part.fieldname] = [];
-            }
-
             // The files must be read (toBuffer() or read part.file stream) otherwise the async iterator will not fulfill!
             result[part.fieldname].push(await parseFilePart(part));
         }
