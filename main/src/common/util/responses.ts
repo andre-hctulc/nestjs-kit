@@ -13,20 +13,33 @@ export type CommonBody = Partial<
     } & Record<string, any>
 >;
 
-export interface CreatedResBody extends Accepted {
+/**
+ * Body for a successful creation operation.
+ */
+export interface CreatedResBody<T = string> extends Accepted {
+    created: T;
     /**
-     * The ids of the created resource.s Can be empty if no ids are available.
+     * The length of the result. If the result is an array, this is the length of the array,
+     * otherwise it is 1 if the result is not null or undefined and 0 if it is.
      */
-    created_id: string | string[];
+    resultLength: number;
 }
 
-export interface UpdatedResBody extends Accepted {
+/**
+ * Body for a successful update operation.
+ */
+export interface UpdatedResBody<T = string> extends Accepted {
+    updated: T;
     /**
-     * The ids of the updated resources. Can be empty if no id is available.
+     * The length of the result. If the result is an array, this is the length of the array,
+     * otherwise it is 1 if the result is not null or undefined and 0 if it is.
      */
-    updated_id: string | string[];
+    resultLength: number;
 }
 
+/**
+ * Body for a successful operation that does not return any data.
+ */
 export interface AcceptedResBody extends Accepted {}
 
 export interface ResultResBody<T = any> extends Accepted {
@@ -41,38 +54,52 @@ export interface ResultResBody<T = any> extends Accepted {
     resultLength: number;
 }
 
+const resultLength = (result: unknown): number => {
+    if (Array.isArray(result)) {
+        return result.length;
+    } else if (result === undefined) {
+        return 0;
+    } else {
+        return 1;
+    }
+};
+
 /**
  * Create a body for a successful creation operation.
- * The body provides the ids of the created resources either as a single id or an array of ids.
- * @param more Additional properties to include in the body.
  */
-export function createdBody<B extends CommonBody = object>(
-    created_id: string | string[],
-    more?: B
-): CreatedResBody & B {
-    return { created_id, accepted: true, ...(more as any) };
+export function createdBody<T = string>(created: T): CreatedResBody<T> {
+    return {
+        created,
+        accepted: true,
+        resultLength: resultLength(created),
+    };
+}
+
+/**
+ * Create a body for a successful update operation.
+ */
+export function updatedBody<T = string>(updated: T): UpdatedResBody<T> {
+    return {
+        updated,
+        accepted: true,
+        resultLength: resultLength(updated),
+    };
 }
 
 /**
  * Create a body for a successful operation.
- * @param more Additional properties to include in the body.
  */
-export function acceptedBody<B extends CommonBody = object>(more?: B): AcceptedResBody & B {
-    return { accepted: true, ...(more as any) };
+export function acceptedBody(): AcceptedResBody {
+    return { accepted: true };
 }
 
 /**
- * Create a body for a successful query operation. The body includes the result and the length of the result.
- * @param more Additional properties to include in the body.
+ * Create a body for a successful query operation.
  */
-export function resultBody<T, B extends CommonBody = object>(
-    result: T,
-    more?: CommonBody
-): ResultResBody<T> & B {
+export function resultBody<T>(result: T): ResultResBody<T> {
     return {
         result,
         accepted: true,
-        resultLength: Array.isArray(result) ? result.length : result == null ? 0 : 1,
-        ...(more as any),
+        resultLength: resultLength(result),
     };
 }
