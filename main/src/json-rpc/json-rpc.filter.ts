@@ -1,4 +1,4 @@
-import { ArgumentsHost, Catch, ExceptionFilter } from "@nestjs/common";
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException } from "@nestjs/common";
 import { JsonRpcError } from "./json-rpc.error.js";
 import { JsonRpcErrorResponse } from "./json-rpc.types.js";
 import { LogLevel } from "../common/index.js";
@@ -14,7 +14,7 @@ export interface ExceptionFilterConfig {
     /**
      * "verbose": Log all exceptions
      *
-     * "error" | "info": Log only unmapped and non http errors
+     * "error" | "info": Log only unmapped and non rpc errors
      */
     logLevel?: LogLevel;
 }
@@ -64,7 +64,7 @@ export class JsonRpcExceptionFilter implements ExceptionFilter {
 
         if (exception instanceof JsonRpcError) {
             errRes = exception.createRpcErrorResponse(reqId);
-        } else if (exception instanceof JsonRpcError) {
+        } else if (exception instanceof HttpException) {
             errRes = {
                 jsonrpc: "2.0",
                 error: {
