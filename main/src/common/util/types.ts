@@ -9,4 +9,5 @@
  */
 export type LogLevel = "verbose" | "info" | "error" | "silent";
 
-export type RawParams = Record<string, string | string[]>;
+export type ParamValue<T = string> = T | T[] | undefined;
+export type RawParams<T = string> = Record<string, ParamValue<T>>;

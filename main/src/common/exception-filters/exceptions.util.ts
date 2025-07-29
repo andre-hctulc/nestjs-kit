@@ -4,7 +4,7 @@ import { ErrorBody, ErrorMapper } from "./exceptions.types.js";
 /**
  * Maps an exception to an {@link ErrorBody}.
  *
- * If the exception is an instance of {@link HttpException}, it will be mapped to an {@link ErrorBody} with the status code and message from the exception.
+ * If the exception is an instance of {@link HttpException}, it is mapped to an {@link ErrorBody} with the status code and message of the exception.
  * Otherwise it will be mapped to a generic internal server error {@link ErrorBody}.
  *
  * @param exception The exception to map.
@@ -44,7 +44,7 @@ export function mapExceptionWithInfo(
             details: {},
         };
 
-        if (typeof resObj === "object") {
+        if (resObj && typeof resObj === "object") {
             const resObjMessage = (resObj as any)["message"];
 
             if (typeof resObjMessage === "string") {

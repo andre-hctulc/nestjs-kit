@@ -40,12 +40,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
             const route = ctx.getRequest<FastifyRequest>().url;
 
             // Only log the exception if log mode verbose or if the exception is not a HttpException
-            // NOTE log() does'nt log when logLevel is silent
-            if (
-                (this._logLevel !== "error" && this._logLevel !== "info") ||
-                (!(exception instanceof HttpException) && !userMapped)
-            ) {
-                log(this._logLevel, "error", `[${req.method}] Exception caught at "${route}":\n`, exception);
+            if (this._logLevel === "verbose" || (!(exception instanceof HttpException) && !userMapped)) {
+                log(this._logLevel, "error", `ERR at [${req.method}] ${route}:\n`, exception);
             }
 
             // fastify
