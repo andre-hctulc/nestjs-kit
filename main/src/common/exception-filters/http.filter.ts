@@ -1,12 +1,13 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException } from "@nestjs/common";
 import { FastifyRequest } from "fastify";
 import { mapExceptionWithInfo, mapException } from "./exceptions.util.js";
-import { ErrorBody, ErrorMapper } from "./exceptions.types.js";
+import { ErrorBody, ErrorMapper, ErrorResponseEnhance } from "./exceptions.types.js";
 import { LogLevel } from "../util/types.js";
 import { defaultLogLevel, log } from "../util/system/system-util.js";
 
 export interface ExceptionFilterConfig {
     mapErrors?: ErrorMapper;
+    enhanceResponse?: ErrorResponseEnhance;
     /**
      * "verbose": Log all exceptions
      *
@@ -43,6 +44,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
             if (this._logLevel === "verbose" || (!(exception instanceof HttpException) && !userMapped)) {
                 log(this._logLevel, "error", `ERR at [${req.method}] ${route}:\n`, exception);
             }
+
+            const { headers } = this._config.enhanceResponse
+                ? this._config.enhanceResponse(req, res, exception)
+                : { headers: {} };
+
+            Object.entries(headers).forEach(([key, value]) => {
+                if (value !== undefined) {
+                    res.setHeader(key, value);
+                }
+            });
 
             // fastify
             if (typeof res.code === "function") {

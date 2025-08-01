@@ -1,7 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException } from "@nestjs/common";
 import { JsonRpcError } from "./json-rpc.error.js";
 import { JsonRpcErrorResponse } from "./json-rpc.types.js";
-import { LogLevel } from "../common/index.js";
+import { ErrorResponseEnhance, LogLevel } from "../common/index.js";
 import { defaultLogLevel, log } from "../common/util/system/system-util.js";
 import { FastifyReply, FastifyRequest } from "fastify";
 
@@ -11,6 +11,13 @@ export type JsonRpcErrorMapper = (
 
 export interface ExceptionFilterConfig {
     mapErrors?: JsonRpcErrorMapper;
+    enhanceResponse?: ErrorResponseEnhance;
+    /**
+     * Exceptions with this status are ignored by the filter.
+     *
+     * @default [400, 401, 403, 404, 422]
+     */
+    transportStatusCodes?: number[];
     /**
      * "verbose": Log all exceptions
      *
@@ -19,14 +26,18 @@ export interface ExceptionFilterConfig {
     logLevel?: LogLevel;
 }
 
+const TransportHttpErrorCodes: number[] = [400, 401, 403, 404, 422];
+
 @Catch()
 export class JsonRpcExceptionFilter implements ExceptionFilter {
     private _logLevel: LogLevel;
     private _config: ExceptionFilterConfig;
+    private _transportStatusCodes: number[];
 
     constructor(config?: ExceptionFilterConfig) {
         this._config = config || {};
         this._logLevel = this._config.logLevel || defaultLogLevel();
+        this._transportStatusCodes = this._config.transportStatusCodes || TransportHttpErrorCodes;
     }
 
     catch(exception: unknown, host: ArgumentsHost): void {
@@ -61,10 +72,18 @@ export class JsonRpcExceptionFilter implements ExceptionFilter {
         }
 
         let errRes: JsonRpcErrorResponse;
+        let status: number = 200;
 
         if (exception instanceof JsonRpcError) {
             errRes = exception.createRpcErrorResponse(reqId);
+            status = exception.getStatus();
         } else if (exception instanceof HttpException) {
+            if (this._transportStatusCodes.includes(exception.getStatus())) {
+                // Pass to next filter
+                throw exception;
+            }
+
+            // Map HttpException to JsonRpcErrorResponse
             errRes = {
                 jsonrpc: "2.0",
                 error: {
@@ -73,6 +92,8 @@ export class JsonRpcExceptionFilter implements ExceptionFilter {
                 },
                 id: reqId,
             };
+            // Use default http status
+            status = 200;
         } else {
             errRes = {
                 jsonrpc: "2.0",
@@ -85,7 +106,17 @@ export class JsonRpcExceptionFilter implements ExceptionFilter {
             };
         }
 
-        res.status(200).send(errRes);
+        const { headers } = this._config.enhanceResponse
+            ? this._config.enhanceResponse(req, res, exception)
+            : { headers: {} };
+
+        Object.entries(headers).forEach(([key, value]) => {
+            if (value !== undefined) {
+                res.header(key, value);
+            }
+        });
+
+        res.status(status).send(errRes);
     }
 
     private _mapHttpStatusToJsonRpcCode(httpStatus: number): number {
