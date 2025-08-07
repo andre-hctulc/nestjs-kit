@@ -9,22 +9,26 @@ export function defaultLogLevel(): LogLevel {
 
 const PRE = "--<< nestjs-kit >>--";
 
-export function log(currentLogLevel: LogLevel, severity: Omit<LogLevel, "silent">, ...message: any[]): void {
+export function log(
+    currentLogLevel: LogLevel,
+    severity: Exclude<LogLevel, "silent">,
+    ...message: any[]
+): void {
     if (currentLogLevel === "silent") {
         return;
+    } else if (currentLogLevel === "error") {
+        if (severity !== "error") {
+            return;
+        }
+    } else if (currentLogLevel === "info") {
+        if (severity === "verbose") {
+            return;
+        }
+    } else if (currentLogLevel === "verbose") {
     }
 
-    const logger = severity === "error" ? console.error : console.log;
-
-    if (currentLogLevel === "verbose") {
-        return logger(PRE, ...message);
-    }
-
-    if (currentLogLevel === "info" && severity === "error") {
-        return;
-    }
-
-    logger(PRE, "\n", ...message);
+    const _log = severity === "error" ? console.error : console.log;
+    _log(PRE, "\n", ...message);
 }
 
 export function hasKeys(obj: object): boolean {

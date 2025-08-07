@@ -40,10 +40,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
         const send = (body: ErrorBody) => {
             const route = ctx.getRequest<FastifyRequest>().url;
 
-            // Only log the exception if log mode verbose or if the exception is not a HttpException
-            if (this._logLevel === "verbose" || (!(exception instanceof HttpException) && !userMapped)) {
-                log(this._logLevel, "error", `ERR at [${req.method}] ${route}:\n`, exception);
-            }
+            log(
+                this._logLevel,
+                exception instanceof HttpException ? "verbose" : "error",
+                `ERR at [${req.method}] ${route}:\n`,
+                exception
+            );
 
             const { headers } = this._config.enhanceResponse
                 ? this._config.enhanceResponse(req, res, exception)

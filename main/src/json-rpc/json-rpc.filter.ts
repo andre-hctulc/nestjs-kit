@@ -66,10 +66,12 @@ export class JsonRpcExceptionFilter implements ExceptionFilter {
             }
         }
 
-        // Only log the exception if log mode verbose or if the exception is not a HttpException
-        if (this._logLevel === "verbose" || !(exception instanceof JsonRpcError)) {
-            log(this._logLevel, "error", `ERR at [${req.method}] ${route}:\n`, exception);
-        }
+        log(
+            this._logLevel,
+            exception instanceof HttpException ? "verbose" : "error",
+            `ERR at [${req.method}] ${route}:\n`,
+            exception
+        );
 
         let errRes: JsonRpcErrorResponse;
         let status: number = 200;
