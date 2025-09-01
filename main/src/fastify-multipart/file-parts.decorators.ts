@@ -49,6 +49,8 @@ export const FilePartsOpts = (options: Omit<BusboyConfig, "headers">) => {
 /**
  * **@fastify/multipart** file parts decorator.
  *
+ * Extracts `Record<string, ReadMultipartFile | ReadMultipartFile[]>`.
+ *
  * Retrieves files uploaded in the request with a multipart form. The files are read and set in the field `buff`.
  */
 export const FileParts = FilePartsOpts({});

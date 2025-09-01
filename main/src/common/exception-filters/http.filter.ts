@@ -5,7 +5,7 @@ import { ErrorBody, ErrorMapper, ErrorResponseEnhance } from "./exceptions.types
 import { LogLevel } from "../util/types.js";
 import { defaultLogLevel, log } from "../util/system/system-util.js";
 
-export interface ExceptionFilterConfig {
+export interface HttpExceptionFilterConfig {
     mapErrors?: ErrorMapper;
     enhanceResponse?: ErrorResponseEnhance;
     /**
@@ -23,10 +23,10 @@ export interface ExceptionFilterConfig {
  */
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-    private _config: ExceptionFilterConfig;
+    private _config: HttpExceptionFilterConfig;
     private _logLevel: LogLevel;
 
-    constructor(config?: ExceptionFilterConfig) {
+    constructor(config?: HttpExceptionFilterConfig) {
         this._config = config || {};
         this._logLevel = this._config.logLevel || defaultLogLevel();
     }
@@ -40,9 +40,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         const send = (body: ErrorBody) => {
             const route = ctx.getRequest<FastifyRequest>().url;
 
+            const isUnexpectedError = !(exception instanceof HttpException) || exception.getStatus() >= 500;
             log(
                 this._logLevel,
-                exception instanceof HttpException ? "verbose" : "error",
+                isUnexpectedError ? "verbose" : "error",
                 `ERR at [${req.method}] ${route}:\n`,
                 exception
             );

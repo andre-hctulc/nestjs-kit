@@ -8,7 +8,7 @@ import { flatten } from "./fastify-multipart-system.util.js";
 async function toMap(
     req: FastifyRequest,
     options: Omit<BusboyConfig, "headers">
-): Promise<Record<string, any[]>> {
+): Promise<Record<string, any>> {
     const parts = await req.parts(options);
     const result: Record<string, any[]> = {};
 
@@ -30,6 +30,8 @@ async function toMap(
 
 /**
  * {@link Parts} decorator with options.
+ * 
+ * Extracts `Record<string, any>`.
  *
  * Use `strict: true` to ensure that only multipart requests are processed, otherwise it will return the body if it is a plain object.
  */

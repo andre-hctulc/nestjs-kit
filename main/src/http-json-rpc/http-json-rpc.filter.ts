@@ -1,5 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException } from "@nestjs/common";
-import { JsonRpcError } from "./json-rpc.error.js";
+import { HttpRpcError } from "./http-rpc.error.js";
 import { JsonRpcErrorResponse } from "./json-rpc.types.js";
 import { ErrorResponseEnhance, LogLevel } from "../common/index.js";
 import { defaultLogLevel, log } from "../common/util/system/system-util.js";
@@ -7,9 +7,9 @@ import { FastifyReply, FastifyRequest } from "fastify";
 
 export type JsonRpcErrorMapper = (
     error: unknown
-) => JsonRpcErrorResponse | JsonRpcError | null | void | undefined;
+) => JsonRpcErrorResponse | HttpRpcError | null | void | undefined;
 
-export interface ExceptionFilterConfig {
+export interface HttpRpcExceptionFilterConfig {
     mapErrors?: JsonRpcErrorMapper;
     enhanceResponse?: ErrorResponseEnhance;
     /**
@@ -29,12 +29,12 @@ export interface ExceptionFilterConfig {
 const TransportHttpErrorCodes: number[] = [400, 401, 403, 404, 422];
 
 @Catch()
-export class JsonRpcExceptionFilter implements ExceptionFilter {
+export class HttpRpcExceptionFilter implements ExceptionFilter {
     private _logLevel: LogLevel;
-    private _config: ExceptionFilterConfig;
+    private _config: HttpRpcExceptionFilterConfig;
     private _transportStatusCodes: number[];
 
-    constructor(config?: ExceptionFilterConfig) {
+    constructor(config?: HttpRpcExceptionFilterConfig) {
         this._config = config || {};
         this._logLevel = this._config.logLevel || defaultLogLevel();
         this._transportStatusCodes = this._config.transportStatusCodes || TransportHttpErrorCodes;
@@ -53,12 +53,12 @@ export class JsonRpcExceptionFilter implements ExceptionFilter {
         if (this._config.mapErrors) {
             const mappedError = this._config.mapErrors(exception);
 
-            if (mappedError instanceof JsonRpcError) {
+            if (mappedError instanceof HttpRpcError) {
                 userMapped = true;
                 exception = mappedError;
             } else if (mappedError) {
                 userMapped = true;
-                exception = new JsonRpcError(
+                exception = new HttpRpcError(
                     mappedError.error.code,
                     mappedError.error.message,
                     mappedError.error.data
@@ -66,9 +66,10 @@ export class JsonRpcExceptionFilter implements ExceptionFilter {
             }
         }
 
+        const isUnexpectedError = !(exception instanceof HttpRpcError) || exception.getStatus() >= 500;
         log(
             this._logLevel,
-            exception instanceof HttpException ? "verbose" : "error",
+            isUnexpectedError ? "verbose" : "error",
             `ERR at [${req.method}] ${route}:\n`,
             exception
         );
@@ -76,7 +77,7 @@ export class JsonRpcExceptionFilter implements ExceptionFilter {
         let errRes: JsonRpcErrorResponse;
         let status: number = 200;
 
-        if (exception instanceof JsonRpcError) {
+        if (exception instanceof HttpRpcError) {
             errRes = exception.createRpcErrorResponse(reqId);
             status = exception.getStatus();
         } else if (exception instanceof HttpException) {
