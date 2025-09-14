@@ -3,11 +3,11 @@ import { LogLevel } from "../common/util/types.js";
 import { defaultLogLevel, log } from "../common/util/system/system-util.js";
 import { Observable, throwError } from "rxjs";
 import { RpcException } from "@nestjs/microservices";
-import { CommonRpcErrorBody } from "./rpc.types.js";
+import { ErrorBody } from "../common/index.js";
 
 export type JsonRpcErrorMapper = (
     error: unknown
-) => Observable<any> | RpcException | CommonRpcErrorBody | null | void | undefined;
+) => Observable<any> | RpcException | ErrorBody | null | void | undefined;
 
 export interface RpcExceptionFilterConfig {
     mapErrors?: JsonRpcErrorMapper;
@@ -56,9 +56,10 @@ export class GlobalRpcExceptionFilter implements RpcExceptionFilter {
 
         if (isUnexpectedError) {
             exception = new RpcException({
-                code: 500,
+                status: 500,
                 message: "Internal Server Error",
-            } satisfies CommonRpcErrorBody);
+                details: {},
+            } satisfies ErrorBody);
         }
 
         return throwError(() => exception);

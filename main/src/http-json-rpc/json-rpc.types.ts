@@ -1,5 +1,3 @@
-import { HttpRpcError } from "./http-rpc.error.js";
-
 type ID = string | number | null;
 type JsonRpcVersion = "2.0";
 
