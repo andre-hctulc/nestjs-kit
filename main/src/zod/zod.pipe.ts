@@ -1,20 +1,40 @@
-import { ArgumentMetadata, BadRequestException, Injectable, PipeTransform } from "@nestjs/common";
+import { ArgumentMetadata, Injectable, PipeTransform } from "@nestjs/common";
 import { z } from "zod/v4";
+
+interface ZodPipeOptions {
+    /**
+     * Validate only a field.
+     *
+     * The pipe will still return the full object.
+     */
+    field?: string | ((data: unknown) => any);
+}
 
 @Injectable()
 export class ZodPipe implements PipeTransform {
-    constructor(private schema: z.ZodSchema) {}
+    private field: ZodPipeOptions["field"];
+
+    constructor(private schema: z.ZodSchema, { field }: ZodPipeOptions = {}) {
+        this.field = field ?? "";
+    }
 
     transform(value: any, metadata: ArgumentMetadata) {
-        const result = this.schema.safeParse(value);
+        let fieldValue = value;
 
-        if (!result.success) {
-            throw new BadRequestException(`Param validation failed: ${result.error.message}`, {
-                // TODO check this in ExceptionsFilter and add set as detail or message? or is result.error.message enough?
-                cause: result.error,
-            });
+        if (this.field) {
+            if (typeof this.field === "function") {
+                fieldValue = this.field(value);
+            } else {
+                fieldValue = (value as any)?.[this.field];
+            }
         }
 
-        return result.data;
+        const { data, success, error } = this.schema.safeParse(fieldValue);
+
+        if (!success) {
+            throw error;
+        }
+
+        return this.field ? value : data;
     }
 }

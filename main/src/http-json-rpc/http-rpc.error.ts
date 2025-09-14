@@ -1,18 +1,18 @@
 import { HttpException } from "@nestjs/common";
-import { JsonRpcErrorResponse } from "./json-rpc.types.js";
 import { jsonRcpErr } from "./json-rpc.util.js";
+import { JsonRpcErrorResponse } from "./json-rpc.model.js";
 
 export class HttpRpcError<T = unknown> extends HttpException {
-    constructor(readonly code: number, readonly message: string, readonly data?: T, httpStatus?: number) {
-        super(message, httpStatus || 200);
+    constructor(readonly code: number, readonly message: string, readonly details?: T, httpStatus?: number) {
+        super(message, httpStatus ?? 200);
     }
 
-    createRpcErrorResponse(id: string): JsonRpcErrorResponse<T> {
+    createRpcErrorResponse(id: string): JsonRpcErrorResponse {
         return jsonRcpErr({
             error: {
-                code: this.code,
+                status: this.code,
                 message: this.message,
-                data: this.data,
+                details: this.details || {},
             },
             id,
         });

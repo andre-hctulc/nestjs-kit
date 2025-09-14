@@ -1,9 +1,9 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException } from "@nestjs/common";
 import { HttpRpcError } from "./http-rpc.error.js";
-import { JsonRpcErrorResponse } from "./json-rpc.types.js";
 import { ErrorResponseEnhance, LogLevel } from "../common/index.js";
 import { defaultLogLevel, log } from "../common/util/system/system-util.js";
 import { FastifyReply, FastifyRequest } from "fastify";
+import { JsonRpcErrorResponse } from "./json-rpc.model.js";
 
 export type JsonRpcErrorMapper = (
     error: unknown
@@ -59,9 +59,9 @@ export class HttpRpcExceptionFilter implements ExceptionFilter {
             } else if (mappedError) {
                 userMapped = true;
                 exception = new HttpRpcError(
-                    mappedError.error.code,
+                    mappedError.error.status,
                     mappedError.error.message,
-                    mappedError.error.data
+                    mappedError.error.details
                 );
             }
         }
@@ -90,8 +90,9 @@ export class HttpRpcExceptionFilter implements ExceptionFilter {
             errRes = {
                 jsonrpc: "2.0",
                 error: {
-                    code: this._mapHttpStatusToJsonRpcCode(exception.getStatus()),
+                    status: this._mapHttpStatusToJsonRpcCode(exception.getStatus()),
                     message: exception.message,
+                    details: {},
                 },
                 id: reqId,
             };
@@ -102,8 +103,9 @@ export class HttpRpcExceptionFilter implements ExceptionFilter {
                 jsonrpc: "2.0",
                 error: {
                     // internal server error
-                    code: -32603,
+                    status: -32603,
                     message: "Internal Server Error",
+                    details: {},
                 },
                 id: reqId,
             };
@@ -118,6 +120,8 @@ export class HttpRpcExceptionFilter implements ExceptionFilter {
                 res.header(key, value);
             }
         });
+
+        (errRes.error as any).code = errRes.error.status;
 
         res.status(status).send(errRes);
     }
