@@ -16,8 +16,8 @@ interface ZodExceptionFilterOptions {
 export class ZodExceptionFilter implements ExceptionFilter {
     private logLevel: LogLevel;
 
-    constructor(private options?: ZodExceptionFilterOptions) {
-        this.logLevel = options?.logLevel || "verbose";
+    constructor(options: ZodExceptionFilterOptions = {}) {
+        this.logLevel = options.logLevel || "silent";
     }
 
     async catch(exception: ZodError, host: ArgumentsHost) {

@@ -1,5 +1,4 @@
-import { z } from "zod/v4";
-import type { ErrorBody } from "../common/index.js";
+import { z } from "zod";
 
 export const JsonRpcRequestSchema = z.object({
     jsonrpc: z.literal("2.0"),
@@ -12,7 +11,7 @@ export type JsonRpcRequest = z.infer<typeof JsonRpcRequestSchema>;
 type ID = string | number | null;
 type JsonRpcVersion = "2.0";
 
-export interface JsonRpcResponse<T = unknown> {
+export interface RpcResponse<T = unknown> {
     jsonrpc: JsonRpcVersion;
     result: T;
     /**
@@ -21,15 +20,20 @@ export interface JsonRpcResponse<T = unknown> {
     id: ID;
 }
 
-export type JsonRpcResponseInput<T = unknown> = Omit<JsonRpcResponse<T>, "jsonrpc">;
-
-export interface JsonRpcErrorResponse {
+export interface RpcErrorResponse {
     jsonrpc: JsonRpcVersion;
-    error: ErrorBody;
+    error: RpcErrorData;
     /**
      * ID matching the request ID, or null if the request was a notification.
      */
     id: ID;
 }
 
-export type JsonRpcErrorResponseInput<T = unknown> = Omit<JsonRpcErrorResponse, "jsonrpc">;
+export type RpcResponseInput<T = unknown> = Omit<RpcResponse<T>, "jsonrpc">;
+export type RpcErrorResponseInput = Omit<RpcErrorResponse, "jsonrpc">;
+
+export type RpcErrorData = {
+    code: number;
+    message: string;
+    data?: any;
+};

@@ -1,13 +1,10 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException } from "@nestjs/common";
-import { HttpRpcError } from "./http-rpc.error.js";
 import { ErrorResponseEnhance, LogLevel } from "../common/index.js";
 import { defaultLogLevel, log } from "../common/util/system/system-util.js";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { JsonRpcErrorResponse } from "./json-rpc.model.js";
+import type { RpcErrorData, RpcErrorResponse } from "../json-rpc/rpc.model.js";
 
-export type JsonRpcErrorMapper = (
-    error: unknown
-) => JsonRpcErrorResponse | HttpRpcError | null | void | undefined;
+export type JsonRpcErrorMapper = (error: unknown) => RpcErrorData | null | void | undefined;
 
 export interface HttpRpcExceptionFilterConfig {
     mapErrors?: JsonRpcErrorMapper;
@@ -15,7 +12,7 @@ export interface HttpRpcExceptionFilterConfig {
     /**
      * Exceptions with this status are ignored by the filter.
      *
-     * @default [400, 401, 403, 404, 422]
+     * @default [401, 403, 422]
      */
     transportStatusCodes?: number[];
     /**
@@ -26,8 +23,11 @@ export interface HttpRpcExceptionFilterConfig {
     logLevel?: LogLevel;
 }
 
-const TransportHttpErrorCodes: number[] = [400, 401, 403, 404, 422];
+const TransportHttpErrorCodes: number[] = [/* 400, */ 401, 403, /* 404, */ 422];
 
+/**
+ * Catches all errors and maps them to JSON-RPC error responses.
+ */
 @Catch()
 export class HttpRpcExceptionFilter implements ExceptionFilter {
     private _logLevel: LogLevel;
@@ -40,74 +40,75 @@ export class HttpRpcExceptionFilter implements ExceptionFilter {
         this._transportStatusCodes = this._config.transportStatusCodes || TransportHttpErrorCodes;
     }
 
+    /**
+     * Check if the error is an instance of `RpcException` **without importing the class**.
+     */
+    private _isRpcException(err: any): err is { getData: () => string | object } {
+        return (
+            err && typeof err === "object" && typeof err.getData === "function" && err.name === "RpcException"
+        );
+    }
+
     catch(exception: unknown, host: ArgumentsHost): void {
         const ctx = host.switchToHttp();
         const res = ctx.getResponse<FastifyReply>();
         const req = ctx.getRequest<FastifyRequest>();
         const route = req.url;
+        const body: Record<string, any> = req.body || {};
+        const reqId = typeof body?.id === "string" ? body?.id : null;
 
-        const reqId = (req.body as any)?.id ?? null;
-
+        let status = 200;
         let userMapped = false;
+        let errData: RpcErrorData | undefined;
 
         if (this._config.mapErrors) {
             const mappedError = this._config.mapErrors(exception);
 
-            if (mappedError instanceof HttpRpcError) {
+            if (mappedError) {
                 userMapped = true;
-                exception = mappedError;
-            } else if (mappedError) {
-                userMapped = true;
-                exception = new HttpRpcError(
-                    mappedError.error.status,
-                    mappedError.error.message,
-                    mappedError.error.details
-                );
+                errData = mappedError;
             }
         }
 
-        const isUnexpectedError = !(exception instanceof HttpRpcError) || exception.getStatus() >= 500;
+        const isRpcError = this._isRpcException(exception);
+
         log(
             this._logLevel,
-            isUnexpectedError ? "verbose" : "error",
+            !isRpcError ? "verbose" : "error",
             `ERR at [${req.method}] ${route}:\n`,
             exception
         );
 
-        let errRes: JsonRpcErrorResponse;
-        let status: number = 200;
-
-        if (exception instanceof HttpRpcError) {
-            errRes = exception.createRpcErrorResponse(reqId);
-            status = exception.getStatus();
+        if (errData) {
+        } else if (isRpcError) {
+            const d = exception.getData() as RpcErrorData;
+            if (typeof d === "object" && d !== null) {
+                errData = d;
+            } else {
+                errData = {
+                    code: -32603,
+                    message: "Internal Server Error",
+                    data: {},
+                };
+            }
         } else if (exception instanceof HttpException) {
+            // Prevent sending transport errors as json-rpc errors, which is not desired
             if (this._transportStatusCodes.includes(exception.getStatus())) {
                 // Pass to next filter
                 throw exception;
             }
 
-            // Map HttpException to JsonRpcErrorResponse
-            errRes = {
-                jsonrpc: "2.0",
-                error: {
-                    status: this._mapHttpStatusToJsonRpcCode(exception.getStatus()),
-                    message: exception.message,
-                    details: {},
-                },
-                id: reqId,
+            errData = {
+                code: HttpRpcExceptionFilter.mapHttpStatusToRpcCode(exception.getStatus()),
+                message: exception.message,
+                data: {},
             };
-            // Use default http status
-            status = 200;
         } else {
-            errRes = {
-                jsonrpc: "2.0",
-                error: {
-                    // internal server error
-                    status: -32603,
-                    message: "Internal Server Error",
-                    details: {},
-                },
-                id: reqId,
+            errData = {
+                // internal server error
+                code: -32603,
+                message: "Internal Server Error",
+                data: {},
             };
         }
 
@@ -121,12 +122,14 @@ export class HttpRpcExceptionFilter implements ExceptionFilter {
             }
         });
 
-        (errRes.error as any).code = errRes.error.status;
-
-        res.status(status).send(errRes);
+        res.status(status).send({
+            jsonrpc: "2.0",
+            error: errData,
+            id: reqId,
+        } satisfies RpcErrorResponse);
     }
 
-    private _mapHttpStatusToJsonRpcCode(httpStatus: number): number {
+    static mapHttpStatusToRpcCode(httpStatus: number): number {
         switch (httpStatus) {
             // Invalid Request
             case 400:

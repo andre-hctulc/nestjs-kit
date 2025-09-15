@@ -1,6 +1,6 @@
 {
     "name": "@dre44/nestjs-kit",
-    "version": "0.5.0",
+    "version": "0.5.1",
     "description": "Some NestJS utility",
     "main": "dist/index.js",
     "type": "module",

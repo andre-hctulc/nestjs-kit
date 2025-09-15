@@ -1,4 +1,3 @@
-export * from "./http-rpc.error.js";
-export * from "./http-json-rpc.filter.js";
-export * from "./json-rpc.util.js";
-export * from "./json-rpc.model.js";
+export * from "./http-rpc.filter.js";
+export * from "../json-rpc/rpc.util.js";
+export * from "../json-rpc/rpc.model.js";

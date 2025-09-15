@@ -1,7 +1,11 @@
 import { ArgumentMetadata, Injectable, PipeTransform } from "@nestjs/common";
 import { z } from "zod/v4";
 
-interface ZodPipeOptions {
+/* 
+Use `ZPipe` as name to prevent conflict with zod's `ZodPipe`.
+*/
+
+interface ZPipeOptions {
     /**
      * Validate only a field.
      *
@@ -11,10 +15,10 @@ interface ZodPipeOptions {
 }
 
 @Injectable()
-export class ZodPipe implements PipeTransform {
-    private field: ZodPipeOptions["field"];
+export class ZPipe implements PipeTransform {
+    private field: ZPipeOptions["field"];
 
-    constructor(private schema: z.ZodSchema, { field }: ZodPipeOptions = {}) {
+    constructor(private schema: z.ZodSchema, { field }: ZPipeOptions = {}) {
         this.field = field ?? "";
     }
 
