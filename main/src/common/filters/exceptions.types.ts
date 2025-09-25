@@ -4,7 +4,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 export type ErrorBody = {
     message: string;
     details: any;
-    code: number;
+    code: string | number;
 };
 
 export type ErrorResponseEnhance = (
