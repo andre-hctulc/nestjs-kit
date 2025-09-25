@@ -14,7 +14,7 @@ export const ChannelMessageSchema = z.object({
      */
     expect_response: z.boolean().optional(),
     type: z.string(),
-    status: z.number().optional(),
+    code: z.number().or(z.string()).optional(),
     error: z.boolean().optional(),
     body: z.record(z.string(), z.any()),
     /**

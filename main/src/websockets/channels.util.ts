@@ -21,7 +21,7 @@ export function createErrorMessage(
     return {
         body: errorBody,
         type: "error",
-        status: errorBody.code ?? 500,
+        code: errorBody.code,
         ...message,
         error: true,
     };
