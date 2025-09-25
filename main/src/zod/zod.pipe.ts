@@ -14,6 +14,9 @@ interface ZPipeOptions {
     field?: string | ((data: unknown) => any);
 }
 
+/**
+ * A pipe that validates the input using a zod schema.
+ */
 @Injectable()
 export class ZPipe implements PipeTransform {
     private field: ZPipeOptions["field"];

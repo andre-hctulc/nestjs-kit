@@ -60,11 +60,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
             // fastify
             if (typeof res.code === "function") {
-                return res.code(body.status).send(body);
+                return res.code(body.code).send(body);
             }
             // express
             else {
-                return res.status(body.status).json(body);
+                return res.status(body.code).json(body);
             }
         };
 

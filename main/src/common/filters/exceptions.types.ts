@@ -3,8 +3,8 @@ import { FastifyReply, FastifyRequest } from "fastify";
 
 export type ErrorBody = {
     message: string;
-    details: Record<string, any>;
-    status: number;
+    details: any;
+    code: number;
 };
 
 export type ErrorResponseEnhance = (

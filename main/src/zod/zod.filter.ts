@@ -2,6 +2,7 @@ import { ArgumentsHost, Catch, ExceptionFilter } from "@nestjs/common";
 import { ZodError } from "zod";
 import { ErrorBody, LogLevel } from "../common/index.js";
 import { log } from "../common/util/system/system-util.js";
+import { RpcErrorData } from "../json-rpc/rpc.model.js";
 
 interface ZodExceptionFilterOptions {
     /**
@@ -22,12 +23,12 @@ export class ZodExceptionFilter implements ExceptionFilter {
 
     async catch(exception: ZodError, host: ArgumentsHost) {
         const ctxType = host.getType();
-        const errorBody: ErrorBody = {
+        const httpErrBody: ErrorBody = {
             message: "Param validation failed",
             details: {
                 issues: exception.issues,
             },
-            status: 400,
+            code: 400,
         };
 
         log(this.logLevel, "error", exception);
@@ -36,13 +37,19 @@ export class ZodExceptionFilter implements ExceptionFilter {
             const http = host.switchToHttp();
             const response = http.getResponse();
 
-            response.status(400).json(errorBody);
+            response.status(400).json(httpErrBody);
         } else if (ctxType === "rpc") {
             const { RpcException } = await import("@nestjs/microservices");
-            throw new RpcException(errorBody);
+            throw new RpcException({
+                code: -32602,
+                message: "Invalid params",
+                data: {
+                    issues: exception.issues,
+                },
+            } satisfies RpcErrorData);
         } else {
             const { WsException } = await import("@nestjs/websockets");
-            throw new WsException(errorBody);
+            throw new WsException(httpErrBody);
         }
     }
 }

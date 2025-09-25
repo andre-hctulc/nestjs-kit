@@ -14,14 +14,14 @@ import { mapException, type ErrorBody, type ErrorMapper } from "@dre44/nestjs-ki
 export function createErrorMessage(
     exception: unknown,
     message?: Partial<Omit<ChannelMessageInput, "error">>,
-    mapError?: ErrorMapper,
+    mapError?: ErrorMapper
 ): ChannelMessageInput {
     const errorBody = mapException(exception, mapError);
 
     return {
         body: errorBody,
         type: "error",
-        status: errorBody.status ?? 500,
+        status: errorBody.code ?? 500,
         ...message,
         error: true,
     };
@@ -29,7 +29,7 @@ export function createErrorMessage(
 
 export function tInput<M extends AnyPayloadMap, T extends string & keyof M>(
     type: T,
-    input: Omit<TypedChannelMessageInput<M, T>, "type">,
+    input: Omit<TypedChannelMessageInput<M, T>, "type">
 ): TypedChannelMessageInput<M, T> {
     return { ...input, type };
 }

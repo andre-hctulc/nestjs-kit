@@ -75,7 +75,7 @@ export class HttpRpcExceptionFilter implements ExceptionFilter {
         log(
             this._logLevel,
             !isRpcError ? "verbose" : "error",
-            `ERR at [${req.method}] ${route}:\n`,
+            `ERR <http_rpc> at [${req.method}] ${route}:\n`,
             exception
         );
 
@@ -86,7 +86,7 @@ export class HttpRpcExceptionFilter implements ExceptionFilter {
                 errData = d;
             } else {
                 errData = {
-                    code: -32603,
+                    code: -32000,
                     message: "Internal Server Error",
                     data: {},
                 };
@@ -106,7 +106,7 @@ export class HttpRpcExceptionFilter implements ExceptionFilter {
         } else {
             errData = {
                 // internal server error
-                code: -32603,
+                code: -32000,
                 message: "Internal Server Error",
                 data: {},
             };
@@ -141,12 +141,8 @@ export class HttpRpcExceptionFilter implements ExceptionFilter {
             case 422:
                 return -32602;
             // Server error (custom range)
-            case 401:
-            case 403:
-                return -32000;
-            // Internal error
             default:
-                return -32603;
+                return -32000;
         }
     }
 }

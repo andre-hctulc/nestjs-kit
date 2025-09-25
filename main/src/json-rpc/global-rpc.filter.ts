@@ -52,11 +52,11 @@ export class GlobalRpcExceptionFilter implements RpcExceptionFilter {
         }
 
         const isUnexpectedError = !(exception instanceof RpcException);
-        log(this._logLevel, isUnexpectedError ? "verbose" : "error", `ERR:\n`, exception);
+        log(this._logLevel, isUnexpectedError ? "verbose" : "error", `ERR at RPC handler:\n`, exception);
 
         if (isUnexpectedError) {
             exception = new RpcException({
-                code: -32603,
+                code: -32000,
                 message: "Internal Server Error",
                 data: {},
             } satisfies RpcErrorData);

@@ -39,7 +39,7 @@ export function mapExceptionWithInfo(
         const resObj = exception.getResponse();
 
         const errBody: ErrorBody = {
-            status: status,
+            code: status,
             message: exception.message,
             details: {},
         };
@@ -59,7 +59,7 @@ export function mapExceptionWithInfo(
     } else {
         return {
             body: {
-                status: HttpStatus.INTERNAL_SERVER_ERROR,
+                code: HttpStatus.INTERNAL_SERVER_ERROR,
                 message: "Internal server error",
                 details: {},
             },
