@@ -1,10 +1,10 @@
 import type { HttpException } from "@nestjs/common";
 import { FastifyReply, FastifyRequest } from "fastify";
+import { CommonPayload } from "../util/responses.js";
 
-export type ErrorBody = {
+export type CommonErrorObject = CommonPayload & {
     message: string;
     details: any;
-    code: string | number;
 };
 
 export type ErrorResponseEnhance = (
@@ -15,6 +15,8 @@ export type ErrorResponseEnhance = (
     headers: Record<string, string | undefined>;
 };
 /**
- * Maps known errors to a specific {@link ErrorBody} or {@link HttpException}.
+ * Maps known errors to a specific {@link CommonErrorObject} or {@link HttpException}.
  */
-export type ErrorMapper = (exception: unknown) => ErrorBody | HttpException | null | undefined | void | false;
+export type ErrorMapper = (
+    exception: unknown
+) => CommonErrorObject | HttpException | null | undefined | void | false;

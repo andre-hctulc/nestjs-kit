@@ -19,3 +19,8 @@ export class BadRequestError extends RpcException {
     }
 }
 
+export class RpcInternalError extends RpcException {
+    constructor(message?: string) {
+        super({ message: message || "Internal error", code: -32603 } satisfies RpcErrorData);
+    }
+}

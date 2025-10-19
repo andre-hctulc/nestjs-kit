@@ -1,6 +1,6 @@
 import { ArgumentsHost, Catch, ExceptionFilter } from "@nestjs/common";
 import { ZodError } from "zod";
-import { ErrorBody, LogLevel } from "../common/index.js";
+import { CommonErrorObject, LogLevel } from "../common/index.js";
 import { log } from "../common/util/system/system-util.js";
 import { RpcErrorData } from "../json-rpc/rpc.model.js";
 
@@ -23,7 +23,7 @@ export class ZodExceptionFilter implements ExceptionFilter {
 
     async catch(exception: ZodError, host: ArgumentsHost) {
         const ctxType = host.getType();
-        const httpErrBody: ErrorBody = {
+        const httpErrBody: CommonErrorObject = {
             message: "Param validation failed",
             details: {
                 issues: exception.issues,

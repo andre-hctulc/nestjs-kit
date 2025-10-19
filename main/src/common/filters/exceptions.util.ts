@@ -1,24 +1,53 @@
 import { HttpException, HttpStatus } from "@nestjs/common";
-import { ErrorBody, ErrorMapper } from "./exceptions.types.js";
+import { CommonErrorObject, ErrorMapper } from "./exceptions.types.js";
+
+export function objectErrorObject(obj: object | string): CommonErrorObject {
+    if (typeof obj === "string") {
+        return {
+            message: obj,
+            code: 500,
+            details: {},
+        };
+    }
+
+    obj = { ...obj };
+    let message: string = "Internal Server Error";
+    let code: string | number = 500;
+    let details: any;
+
+    if ("message" in obj && typeof obj.message === "string") {
+        message = obj.message;
+        delete obj.message;
+    }
+
+    if ("code" in obj && (typeof obj.code === "number" || typeof obj.code === "string")) {
+        code = obj.code;
+        delete obj.code;
+    }
+
+    if ("details" in obj) {
+        details = obj.details;
+        delete obj.details;
+    }
+
+    return {
+        message,
+        code,
+        details: details ? { ...details, extra: obj } : obj,
+    };
+}
 
 /**
- * Maps an exception to an {@link ErrorBody}.
+ * Maps an exception to a {@link CommonErrorObject}.
  *
- * If the exception is an instance of {@link HttpException}, it is mapped to an {@link ErrorBody} with the status code and message of the exception.
- * Otherwise it will be mapped to a generic internal server error {@link ErrorBody}.
+ * If the exception is an instance of {@link HttpException}, it is mapped to an {@link CommonErrorObject} with the status code and message of the exception.
+ * Otherwise it will be mapped to a generic internal server error {@link CommonErrorObject}.
  *
  * @param exception The exception to map.
  * @param mapError Optional function to map the exception to a different error body or error.
  *
  */
-export function mapException(exception: unknown, mapError?: ErrorMapper): ErrorBody {
-    return mapExceptionWithInfo(exception, mapError).body;
-}
-
-export function mapExceptionWithInfo(
-    exception: unknown,
-    mapError?: ErrorMapper
-): { body: ErrorBody; userMapped: boolean } {
+export function mapHttpException(exception: unknown, mapError?: ErrorMapper): CommonErrorObject {
     let userMapped = false;
 
     if (mapError) {
@@ -26,7 +55,7 @@ export function mapExceptionWithInfo(
         if (mapped) {
             // return mapped error body directly
             if (!(mapped instanceof Error)) {
-                return { body: mapped, userMapped: true };
+                return mapped;
             }
             // otherwise update exception with mapped one
             exception = mapped;
@@ -37,33 +66,16 @@ export function mapExceptionWithInfo(
     if (exception instanceof HttpException) {
         const status = exception.getStatus();
         const resObj = exception.getResponse();
-
-        const errBody: ErrorBody = {
-            code: status,
-            message: exception.message,
-            details: {},
-        };
-
-        if (resObj && typeof resObj === "object") {
-            const resObjMessage = (resObj as any)["message"];
-
-            if (typeof resObjMessage === "string") {
-                errBody.message = resObjMessage;
-                delete (resObj as any)["message"];
-            }
-
-            errBody.details = resObj;
+        const errObj = objectErrorObject(resObj);
+        if (status) {
+            errObj.code = status;
         }
-
-        return { body: errBody, userMapped };
+        return errObj;
     } else {
         return {
-            body: {
-                code: HttpStatus.INTERNAL_SERVER_ERROR,
-                message: "Internal server error",
-                details: {},
-            },
-            userMapped: false,
+            code: HttpStatus.INTERNAL_SERVER_ERROR,
+            message: "Internal server error",
+            details: {},
         };
     }
 }

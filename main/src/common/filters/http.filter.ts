@@ -1,7 +1,7 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException } from "@nestjs/common";
 import { FastifyRequest } from "fastify";
-import { mapExceptionWithInfo, mapException } from "./exceptions.util.js";
-import { ErrorBody, ErrorMapper, ErrorResponseEnhance } from "./exceptions.types.js";
+import { mapHttpException } from "./exceptions.util.js";
+import { CommonErrorObject, ErrorMapper, ErrorResponseEnhance } from "./exceptions.types.js";
 import { LogLevel } from "../util/types.js";
 import { defaultLogLevel, log } from "../util/system/system-util.js";
 
@@ -17,9 +17,9 @@ export interface HttpExceptionFilterConfig {
 }
 
 /**
- * Maps all exceptions to a JSON response ({@link ErrorBody}).
+ * Maps all exceptions to a JSON response ({@link CommonErrorObject}).
  *
- * @see {@link ErrorBody} and {@link mapException} for more details.
+ * @see {@link CommonErrorObject} and {@link mapHttpException} for more details.
  */
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -35,9 +35,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
         const ctx = host.switchToHttp();
         const res = ctx.getResponse();
         const req = ctx.getRequest<FastifyRequest>();
-        const { body: errorBody, userMapped } = mapExceptionWithInfo(exception, this._config.mapErrors);
+        const errorBody = mapHttpException(exception, this._config.mapErrors);
 
-        const send = (body: ErrorBody) => {
+        const send = (body: CommonErrorObject) => {
             const route = ctx.getRequest<FastifyRequest>().url;
 
             const isUnexpectedError = !(exception instanceof HttpException) || exception.getStatus() >= 500;

@@ -58,14 +58,12 @@ export class HttpRpcExceptionFilter implements ExceptionFilter {
         const reqId = typeof body?.id === "string" ? body?.id : null;
 
         let status = 200;
-        let userMapped = false;
         let errData: RpcErrorData | undefined;
 
         if (this._config.mapErrors) {
             const mappedError = this._config.mapErrors(exception);
 
             if (mappedError) {
-                userMapped = true;
                 errData = mappedError;
             }
         }

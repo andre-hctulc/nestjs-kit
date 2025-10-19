@@ -9,7 +9,7 @@ export type JsonRpcErrorMapper = (
     error: unknown
 ) => Observable<any> | RpcException | RpcErrorData | null | void | undefined;
 
-export interface RpcExceptionFilterConfig {
+export interface GlobalRpcExceptionFilterConfig {
     mapErrors?: JsonRpcErrorMapper;
     /**
      * "verbose": Log all exceptions
@@ -24,17 +24,15 @@ export interface RpcExceptionFilterConfig {
  */
 @Catch()
 export class GlobalRpcExceptionFilter implements RpcExceptionFilter {
-    private _config: RpcExceptionFilterConfig;
+    private _config: GlobalRpcExceptionFilterConfig;
     private _logLevel: LogLevel;
 
-    constructor(config?: RpcExceptionFilterConfig) {
+    constructor(config?: GlobalRpcExceptionFilterConfig) {
         this._config = config || {};
         this._logLevel = this._config.logLevel || defaultLogLevel();
     }
 
     catch(exception: unknown, host: ArgumentsHost): Observable<any> {
-        let userMapped = false;
-
         if (this._config.mapErrors) {
             const mappedError = this._config.mapErrors(exception);
 
@@ -43,10 +41,8 @@ export class GlobalRpcExceptionFilter implements RpcExceptionFilter {
             }
 
             if (mappedError instanceof RpcException) {
-                userMapped = true;
                 exception = mappedError;
             } else if (mappedError) {
-                userMapped = true;
                 exception = new RpcException(mappedError);
             }
         }

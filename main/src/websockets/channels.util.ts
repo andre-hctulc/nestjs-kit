@@ -1,10 +1,10 @@
 import { HttpException } from "@nestjs/common";
 import type { AnyPayloadMap, ChannelMessageInput, TypedChannelMessageInput } from "./channels.types.js";
-import { mapException, type ErrorBody, type ErrorMapper } from "@dre44/nestjs-kit";
+import { mapHttpException, type CommonErrorObject, type ErrorMapper } from "@dre44/nestjs-kit";
 
 /**
  * Creates an error channel message input from an exception.
- * Uses {@link mapException} to create the _body_ ({@link ErrorBody}).
+ * Uses {@link mapHttpException} to create the _body_ ({@link CommonErrorObject}).
  *
  * Default _status_ is 500 and the default _type_ is "error".
  *
@@ -16,7 +16,7 @@ export function createErrorMessage(
     message?: Partial<Omit<ChannelMessageInput, "error">>,
     mapError?: ErrorMapper
 ): ChannelMessageInput {
-    const errorBody = mapException(exception, mapError);
+    const errorBody = mapHttpException(exception, mapError);
 
     return {
         body: errorBody,

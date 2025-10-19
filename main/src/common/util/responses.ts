@@ -1,4 +1,8 @@
-interface Accepted {
+export type CommonPayload = {
+    code: number | string;
+};
+
+export interface Accepted extends CommonPayload {
     /**
      * _true_ if the operation was successful, _false_ otherwise.
      * For most cases, this is always _true_.
@@ -6,18 +10,11 @@ interface Accepted {
     accepted: boolean;
 }
 
-export type CommonBody = Partial<
-    {
-        size: number;
-        accepted: boolean;
-    } & Record<string, any>
->;
-
 /**
  * Body for a successful creation operation.
  */
-export interface CreatedResBody<T = string> extends Accepted {
-    created: T;
+export interface Created<T = string> extends Accepted {
+    data: T;
     /**
      * The length of the result. If the result is an array, this is the length of the array,
      * otherwise it is 1 if the result is not null or undefined and 0 if it is.
@@ -28,7 +25,7 @@ export interface CreatedResBody<T = string> extends Accepted {
 /**
  * Body for a successful update operation.
  */
-export interface UpdatedResBody<T = string> extends Accepted {
+export interface Updated<T = string> extends Accepted {
     updated: T;
     /**
      * The length of the result. If the result is an array, this is the length of the array,
@@ -37,12 +34,7 @@ export interface UpdatedResBody<T = string> extends Accepted {
     resultLength: number;
 }
 
-/**
- * Body for a successful operation that does not return any data.
- */
-export interface AcceptedResBody extends Accepted {}
-
-export interface ResultResBody<T = any> extends Accepted {
+export interface Result<T = any> extends Accepted {
     /**
      * Result of the operation
      */
@@ -67,9 +59,10 @@ const resultLength = (result: unknown): number => {
 /**
  * Create a body for a successful creation operation.
  */
-export function createdBody<T = string>(created: T): CreatedResBody<T> {
+export function created<T = string>(created: T): Created<T> {
     return {
-        created,
+        code: 201,
+        data: created,
         accepted: true,
         resultLength: resultLength(created),
     };
@@ -78,8 +71,9 @@ export function createdBody<T = string>(created: T): CreatedResBody<T> {
 /**
  * Create a body for a successful update operation.
  */
-export function updatedBody<T = string>(updated: T): UpdatedResBody<T> {
+export function updated<T = string>(updated: T): Updated<T> {
     return {
+        code: 200,
         updated,
         accepted: true,
         resultLength: resultLength(updated),
@@ -89,17 +83,18 @@ export function updatedBody<T = string>(updated: T): UpdatedResBody<T> {
 /**
  * Create a body for a successful operation.
  */
-export function acceptedBody(): AcceptedResBody {
-    return { accepted: true };
+export function accepted(): Accepted {
+    return { accepted: true, code: 200 };
 }
 
 /**
  * Create a body for a successful query operation.
  */
-export function resultBody<T>(result: T): ResultResBody<T> {
+export function result<T>(result: T): Result<T> {
     return {
         result,
         accepted: true,
         resultLength: resultLength(result),
+        code: 200,
     };
 }
