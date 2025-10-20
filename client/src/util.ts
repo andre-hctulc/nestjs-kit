@@ -1,16 +1,16 @@
-import type { ErrorBody } from "./index.js";
+import type { CommonErrorObject } from "./index.js";
 
 /**
  * Checks if the given value is an {@link ErrorBody} produced by the `HttpExceptionsFilter`.
  */
-export function isErrorBody(body: unknown): body is ErrorBody {
+export function isErrorBody(body: unknown): body is CommonErrorObject {
     return (
         !!body &&
         typeof body === "object" &&
-        typeof (body as ErrorBody).message === "string" &&
-        typeof (body as ErrorBody).status === "number" &&
-        !!(body as ErrorBody).details &&
-        typeof (body as ErrorBody).details === "object"
+        typeof (body as CommonErrorObject).message === "string" &&
+        typeof (body as CommonErrorObject).code === "number" &&
+        !!(body as CommonErrorObject).details &&
+        typeof (body as CommonErrorObject).details === "object"
     );
 }
 
@@ -18,7 +18,7 @@ export function isErrorBody(body: unknown): body is ErrorBody {
  * Parses an {@link ErrorBody} produced by the  `HttpExceptionsFilter`.
  * @param value Either a raw value or a {@link Response} object.
  */
-export async function parseErrorBody(value: any): Promise<ErrorBody | null> {
+export async function parseErrorBody(value: any): Promise<CommonErrorObject | null> {
     try {
         if (value instanceof Response) {
             if (!value.headers.get("content-type")?.includes("application/json")) {
