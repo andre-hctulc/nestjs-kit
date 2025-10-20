@@ -20,7 +20,7 @@ export class GlobalHttpExceptionFilter extends GlobalExceptionFilterBase<void> i
     #config: HttpExceptionFilterConfig;
 
     constructor(config: HttpExceptionFilterConfig = {}) {
-        super(config);
+        super(config, {});
         this.#config = config || {};
     }
 
@@ -39,7 +39,7 @@ export class GlobalHttpExceptionFilter extends GlobalExceptionFilterBase<void> i
             }
         });
 
-        return res.code(error.code).send(error);
+        return res.code(Number(error.code ?? 500)).send(error);
     }
 
     protected at(host: ArgumentsHost): string {

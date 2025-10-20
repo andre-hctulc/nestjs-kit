@@ -27,9 +27,8 @@ export interface Updated<T = string> extends CommonPayload<T> {
     code: 200;
 }
 
-export interface CommonErrorObject extends Omit<CommonPayload, "data"> {
+export interface CommonErrorObject extends CommonPayload {
     error: any;
-    details: any;
 }
 
 const dataLength = (result: unknown): number => {
@@ -85,19 +84,22 @@ export function commonPayload<T>(data: T, more: Record<string, any>): CommonPayl
     };
 }
 
-export function objectToErrorObject(obj: object | string): CommonErrorObject {
+export function objectToErrorObject(
+    obj: object | string,
+    defaultErrorCode?: string | number
+): CommonErrorObject {
     if (typeof obj === "string") {
         return {
             error: obj,
-            code: 500,
-            details: {},
+            code: defaultErrorCode ?? 500,
+            data: {},
         };
     }
 
     obj = { ...obj };
     let message: string = "Internal Server Error";
-    let code: string | number = 500;
-    let details: any;
+    let code: string | number = defaultErrorCode ?? 500;
+    let data: any;
 
     if ("message" in obj && typeof obj.message === "string") {
         message = obj.message;
@@ -109,14 +111,14 @@ export function objectToErrorObject(obj: object | string): CommonErrorObject {
         delete obj.code;
     }
 
-    if ("details" in obj && obj.details && typeof obj.details === "object") {
-        details = obj.details;
-        delete obj.details;
+    if ("data" in obj) {
+        data = obj.data;
+        delete obj.data;
     }
 
     return {
         error: message,
         code,
-        details: details ?? obj,
+        data: data ?? obj,
     };
 }

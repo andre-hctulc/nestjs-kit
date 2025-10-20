@@ -1,4 +1,4 @@
-import { type ArgumentsHost, Catch,type  ExceptionFilter } from "@nestjs/common";
+import { type ArgumentsHost, Catch, type ExceptionFilter } from "@nestjs/common";
 import { ZodError } from "zod";
 import type { CommonErrorObject, LogLevel } from "../common/index.js";
 import { log } from "../common/util/system/system-util.js";
@@ -13,6 +13,9 @@ interface ZodExceptionFilterOptions {
     logLevel?: LogLevel;
 }
 
+/**
+ * Zod exception filter that maps ZodErrors to appropriate HTTP, RPC, or WS error responses.
+ */
 @Catch(ZodError)
 export class ZodExceptionFilter implements ExceptionFilter {
     private logLevel: LogLevel;
@@ -23,9 +26,9 @@ export class ZodExceptionFilter implements ExceptionFilter {
 
     async catch(exception: ZodError, host: ArgumentsHost) {
         const ctxType = host.getType();
-        const httpErrBody: CommonErrorObject = {
+        const errObj: CommonErrorObject = {
             error: "Param validation failed",
-            details: {
+            data: {
                 issues: exception.issues,
             },
             code: 400,
@@ -35,21 +38,18 @@ export class ZodExceptionFilter implements ExceptionFilter {
 
         if (ctxType === "http") {
             const http = host.switchToHttp();
-            const response = http.getResponse();
-
-            response.status(400).json(httpErrBody);
+            const res = http.getResponse();
+            res.status(400).json(errObj);
         } else if (ctxType === "rpc") {
             const { RpcException } = await import("@nestjs/microservices");
             throw new RpcException({
                 code: -32602,
-                message: "Invalid params",
-                data: {
-                    issues: exception.issues,
-                },
+                message: errObj.error,
+                data: errObj.data,
             } satisfies RpcErrorData);
         } else {
             const { WsException } = await import("@nestjs/websockets");
-            throw new WsException(httpErrBody);
+            throw new WsException(errObj);
         }
     }
 }

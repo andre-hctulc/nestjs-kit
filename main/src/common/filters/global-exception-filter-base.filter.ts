@@ -15,6 +15,10 @@ export interface GlobalExceptionFilterConfig {
     logLevel?: LogLevel;
 }
 
+interface InnerConfig {
+    defaultErrorCode?: number;
+}
+
 /**
  * Catches all errors and maps them to a {@link CommonErrorObject}
  * which is sent back to the client via an "error_event" or a custom event name.
@@ -23,10 +27,12 @@ export interface GlobalExceptionFilterConfig {
 export abstract class GlobalExceptionFilterBase<T> {
     #baseConfig: GlobalExceptionFilterConfig;
     #logLevel: LogLevel;
+    #innerConfig: InnerConfig;
 
-    constructor(config: GlobalExceptionFilterConfig = {}) {
+    constructor(config: GlobalExceptionFilterConfig = {}, innerConfig: InnerConfig = {}) {
         this.#baseConfig = { ...config };
         this.#logLevel = this.#baseConfig.logLevel || "error";
+        this.#innerConfig = { ...innerConfig };
     }
 
     protected abstract sendError(exception: unknown, error: CommonErrorObject, host: ArgumentsHost): T;
@@ -49,13 +55,13 @@ export abstract class GlobalExceptionFilterBase<T> {
             unexpected = false;
             // Nestjs WsException
             const message = exception.getError();
-            error = objectToErrorObject(message);
+            error = objectToErrorObject(message, this.#innerConfig.defaultErrorCode);
         } else {
             unexpected = true;
             error = {
-                code: 500,
+                code: this.#innerConfig.defaultErrorCode ?? 500,
                 error: "Internal server error",
-                details: {},
+                data: {},
             };
         }
 
