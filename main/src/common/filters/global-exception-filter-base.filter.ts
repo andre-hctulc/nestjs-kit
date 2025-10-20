@@ -1,4 +1,4 @@
-import { type ArgumentsHost, Catch } from "@nestjs/common";
+import { type ArgumentsHost, Catch, HttpException } from "@nestjs/common";
 import type { LogLevel } from "../util/types.js";
 import { objectToErrorObject, type CommonErrorObject } from "../util/payloads.util.js";
 import { log } from "../util/system/system-util.js";
@@ -47,6 +47,7 @@ export abstract class GlobalExceptionFilterBase<T> {
         let error: CommonErrorObject;
         let unexpected: boolean;
 
+        // WsException/RpcException
         if (
             exception instanceof Error &&
             "getError" in exception &&
@@ -56,7 +57,15 @@ export abstract class GlobalExceptionFilterBase<T> {
             // Nestjs WsException
             const message = exception.getError();
             error = objectToErrorObject(message, this.#innerConfig.defaultErrorCode);
-        } else {
+        }
+        // HttpException
+        else if (exception instanceof HttpException) {
+            unexpected = false;
+            const message = exception.getResponse();
+            error = objectToErrorObject(message, this.#innerConfig.defaultErrorCode);
+        }
+        // Generic Error
+        else {
             unexpected = true;
             error = {
                 code: this.#innerConfig.defaultErrorCode ?? 500,
