@@ -1,4 +1,5 @@
 import { Injectable, CanActivate, ExecutionContext, UnsupportedMediaTypeException } from "@nestjs/common";
+import { FastifyRequest } from "fastify";
 
 type ContentTypeCheck = string | string[] | ((contentType: string) => boolean);
 
@@ -7,8 +8,9 @@ export class ContentTypeGuard implements CanActivate {
     constructor(private readonly allowedContentTypes: ContentTypeCheck) {}
 
     canActivate(context: ExecutionContext): boolean {
-        const request = context.switchToHttp().getRequest();
-        const contentType: string = request.headers["content-type"] || "";
+        const ctx = context.switchToHttp();
+        const req: FastifyRequest = ctx.getRequest();
+        const contentType: string = req.headers["content-type"] || "";
 
         let isAllowed = false;
 

@@ -51,7 +51,7 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
     }
 
     /**
-     * Receives the client id from a request.
+     * Retrieve the client id from a request.
      */
     static fromRequest(req: any): string | undefined {
         if ("raw" in req) {
@@ -61,7 +61,7 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
     }
 
     /**
-     * Receives the client id from a request.
+     * Retrieve the client id from a request.
      * 
      * Throws {@link UnauthorizedException} if the client id is not present.
      */

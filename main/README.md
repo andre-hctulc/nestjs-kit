@@ -1,6 +1,6 @@
 # nestjs-kit
 
-[NestJS](https://nestjs.com) kit.
+[NestJS](https://nestjs.com) + [fastify](https://fastify.dev) kit.
 
 ## Sub Modules
 
