@@ -2,7 +2,10 @@ import { UnauthorizedException } from "@nestjs/common";
 
 declare module "fastify" {
     interface FastifyRequest {
-        apiAccess: APIAccess;
+        /**
+         * API access attached to the request.
+         */
+        apiAccess?: APIAccess;
     }
 }
 

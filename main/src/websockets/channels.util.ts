@@ -1,33 +1,38 @@
-import { HttpException } from "@nestjs/common";
-import type { AnyPayloadMap, ChannelMessageInput, TypedChannelMessageInput } from "./channels.types.js";
-import { mapHttpException, type CommonErrorObject, type ErrorMapper } from "@dre44/nestjs-kit";
+import type { AnyPayloadMap, ChannelMessageInput, TypedChannelMessageInput } from "./channels.model.js";
+import { objectToErrorObject } from "@dre44/nestjs-kit";
+import { WsException } from "@nestjs/websockets";
 
 /**
  * Creates an error channel message input from an exception.
- * Uses {@link mapHttpException} to create the _body_ ({@link CommonErrorObject}).
- *
- * Default _status_ is 500 and the default _type_ is "error".
- *
- * @param exception If {@link HttpException} is passed, the status and message will be taken from it.
- * @param message Optional message to override the default message with.
  */
-export function createErrorMessage(
+export function wsErrorInput(
     exception: unknown,
-    message?: Partial<Omit<ChannelMessageInput, "error">>,
-    mapError?: ErrorMapper
+    message?: Partial<Omit<ChannelMessageInput, "error">>
 ): ChannelMessageInput {
-    const errorBody = mapHttpException(exception, mapError);
+    let inp: ChannelMessageInput;
 
-    return {
-        body: errorBody,
-        type: "error",
-        code: errorBody.code,
-        ...message,
-        error: true,
-    };
+    if (exception instanceof WsException) {
+        const errData = exception.getError();
+        const errObj = objectToErrorObject(errData);
+        return {
+            ...errObj,
+            data: undefined,
+            type: "error",
+            ...message,
+        };
+    } else {
+        inp = {
+            data: undefined,
+            details: {},
+            type: "error",
+            ...message,
+        };
+    }
+
+    return inp;
 }
 
-export function tInput<M extends AnyPayloadMap, T extends string & keyof M>(
+export function wsInput<M extends AnyPayloadMap, T extends string & keyof M>(
     type: T,
     input: Omit<TypedChannelMessageInput<M, T>, "type">
 ): TypedChannelMessageInput<M, T> {

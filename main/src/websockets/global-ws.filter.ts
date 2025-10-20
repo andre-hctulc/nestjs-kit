@@ -1,62 +1,44 @@
-import { ArgumentsHost, Catch, WsExceptionFilter } from "@nestjs/common";
-import { WsException } from "@nestjs/websockets";
+import { type ArgumentsHost, Catch, type WsExceptionFilter } from "@nestjs/common";
 import type { Socket } from "socket.io";
-import { CommonErrorObject, LogLevel, objectErrorObject } from "../common/index.js";
+import { type CommonErrorObject } from "../common/index.js";
+import {
+    GlobalExceptionFilterBase,
+    type GlobalExceptionFilterConfig,
+} from "../common/filters/global-exception-filter-base.filter.js";
 
-export type JsonRpcErrorMapper = (
-    error: unknown
-) => CommonErrorObject | WsException | null | void | undefined;
-
-export interface GlobalWsExceptionFilterConfig {
-    mapErrors?: JsonRpcErrorMapper;
+export interface GlobalWsExceptionFilterConfig extends GlobalExceptionFilterConfig {
     /**
-     * "verbose": Log all exceptions
-     *
-     * "error" | "info": Log only unmapped and non rpc errors
-     */
-    logLevel?: LogLevel;
-    /**
+     * Used for websocket errors.
      * @default "error_event"
      */
     errorEventName?: string;
 }
 
 /**
- * Catches all errors and maps them to a {@link CommonErrorObject}
+ * Catches all errors and maps them to a {@link CommonErrorObject} 
  * which is sent back to the client via an "error_event" or a custom event name.
  */
 @Catch()
-export class GlobalWsExceptionFilter implements WsExceptionFilter {
-    constructor(private _config: GlobalWsExceptionFilterConfig = {}) {}
+export abstract class GlobalWsExceptionFilter
+    extends GlobalExceptionFilterBase<void>
+    implements WsExceptionFilter
+{
+    #config: GlobalWsExceptionFilterConfig;
 
-    catch(exception: unknown, host: ArgumentsHost) {
+    constructor(config: GlobalWsExceptionFilterConfig = {}) {
+        super(config);
+        this.#config = { ...config };
+    }
+
+    protected override sendError(exception: unknown, error: CommonErrorObject, host: ArgumentsHost): void {
         const ctx = host.switchToWs();
         const client = ctx.getClient<Socket>();
+        client.emit(this.#config.errorEventName ?? "error_event", error);
+    }
 
-        let errObj: CommonErrorObject;
-
-        if (this._config.mapErrors) {
-            exception = this._config.mapErrors(exception) || exception;
-        }
-
-        // Nestjs WsException
-        if (exception instanceof WsException) {
-            const message = exception.getError();
-            errObj = objectErrorObject(message);
-        }
-        // Mapped error object
-        else if (!(exception instanceof Error) && exception && typeof exception === "object") {
-            errObj = objectErrorObject(exception);
-        }
-        // Unrecognized error, map to generic internal server error
-        else {
-            errObj = {
-                message: "Internal Server Error",
-                code: 500,
-                details: {},
-            };
-        }
-
-        client.emit(this._config.errorEventName ?? "error_event", errObj);
+    protected override at(host: ArgumentsHost): string {
+        const ctx = host.switchToWs();
+        const client = ctx.getClient<Socket>();
+        return `WS [${client.id}]`;
     }
 }

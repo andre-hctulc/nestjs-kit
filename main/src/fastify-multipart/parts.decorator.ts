@@ -1,7 +1,7 @@
-import { createParamDecorator, ExecutionContext } from "@nestjs/common";
-import { FastifyRequest } from "fastify";
+import { createParamDecorator, type ExecutionContext } from "@nestjs/common";
+import type { FastifyRequest } from "fastify";
 import { parseFilePart } from "./fastify-multipart.util.js";
-import { BusboyConfig } from "busboy";
+import type { BusboyConfig } from "busboy";
 import { isPlainObject } from "../common/util/system/system-util.js";
 import { flatten } from "./fastify-multipart-system.util.js";
 
@@ -30,7 +30,7 @@ async function toMap(
 
 /**
  * {@link Parts} decorator with options.
- * 
+ *
  * Extracts `Record<string, any>`.
  *
  * Use `strict: true` to ensure that only multipart requests are processed, otherwise it will return the body if it is a plain object.

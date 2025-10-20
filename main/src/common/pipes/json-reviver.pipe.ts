@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, PipeTransform } from "@nestjs/common";
+import { BadRequestException, Injectable, type PipeTransform } from "@nestjs/common";
 
 /*
 We do not use a decorator, 

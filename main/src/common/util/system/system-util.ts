@@ -1,4 +1,4 @@
-import { LogLevel } from "../types.js";
+import type { LogLevel } from "../types.js";
 
 export function defaultLogLevel(): LogLevel {
     if (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development") {

@@ -1,6 +1,6 @@
 import { UnauthorizedException, type NestMiddleware } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { parse, serialize, SerializeOptions } from "cookie";
+import { parse, serialize, type SerializeOptions } from "cookie";
 import { randomUUID } from "crypto";
 
 declare module "express" {

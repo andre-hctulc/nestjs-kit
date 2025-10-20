@@ -1,5 +1,5 @@
 import { createParamDecorator } from "@nestjs/common";
-import { FastifyRequest } from "fastify";
+import type { FastifyRequest } from "fastify";
 
 /**
  * Decorator to extract cookies from the request.

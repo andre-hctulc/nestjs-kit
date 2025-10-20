@@ -9,17 +9,18 @@ import {
 import { Server, Socket } from "socket.io";
 import { UnauthorizedException } from "@nestjs/common";
 import { ChannelsManager } from "./channels-manager.class.js";
-import { ChannelMessageSchema, type ChannelMessage } from "./channels.model.js";
-import { createErrorMessage, tInput } from "./channels.util.js";
-import type {
-    Channel,
-    ChannelMessageInput,
-    ChannelMessageResponse,
-    ChannelSendOptions,
-    ChannelSendResult,
-} from "./channels.types.js";
+import { wsErrorInput, wsInput } from "./channels.util.js";
+import {
+    ChannelMessageSchema,
+    type ChannelMessage,
+    type Channel,
+    type ChannelMessageInput,
+    type ChannelMessageResponse,
+    type ChannelSendOptions,
+    type ChannelSendResult,
+} from "./channels.model.js";
 import { randomUUID } from "crypto";
-import { MaybePromise } from "../common/util/system/system-types.js";
+import type { MaybePromise } from "../common/util/system/system-types.js";
 
 declare module "socket.io" {
     interface Socket {
@@ -218,7 +219,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
             });
         } catch (err) {
             this.logError(client, err, "Message parse failed");
-            this.sendToChannel(client.userId, client.id, createErrorMessage(err));
+            this.sendToChannel(client.userId, client.id, wsErrorInput(err));
             return false;
         }
 
@@ -233,7 +234,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
     /**
      * Send a message to a user by channel id.
      *
-     * Use {@link tInput} to create typed messages.
+     * Use {@link wsInput} to create typed messages.
      */
     async sendToChannel(
         userId: string,
@@ -308,7 +309,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
     }
 
     /**
-     * Use {@link tInput} to create typed messages.
+     * Use {@link wsInput} to create typed messages.
      */
     sendToClient(
         userId: string,
@@ -323,7 +324,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
     /**
      * Send a message to all clients of a user.
      *
-     * Use {@link tInput} to create typed messages.
+     * Use {@link wsInput} to create typed messages.
      *
      * @param clientId The client id, or null for all user clients
      */
@@ -344,7 +345,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
     /**
      * Broadcast to all connected clients.
      *
-     * Use {@link tInput} to create typed messages.
+     * Use {@link wsInput} to create typed messages.
      *
      * @returns Send success
      */

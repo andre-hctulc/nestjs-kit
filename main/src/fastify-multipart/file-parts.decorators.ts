@@ -1,8 +1,8 @@
-import { MultipartFile } from "@fastify/multipart";
-import { createParamDecorator, ExecutionContext } from "@nestjs/common";
-import { FastifyRequest } from "fastify";
+import type { MultipartFile } from "@fastify/multipart";
+import { createParamDecorator, type ExecutionContext } from "@nestjs/common";
+import type  { FastifyRequest } from "fastify";
 import { parseFilePart } from "./fastify-multipart.util.js";
-import { BusboyConfig } from "busboy";
+import type { BusboyConfig } from "busboy";
 import { flatten } from "./fastify-multipart-system.util.js";
 
 export type ReadMultipartFile = MultipartFile & { buff: Buffer; size: number };

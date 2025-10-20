@@ -1,7 +1,7 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException } from "@nestjs/common";
-import { ErrorResponseEnhance, LogLevel } from "../common/index.js";
+import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException } from "@nestjs/common";
+import type { ErrorResponseEnhance, LogLevel } from "../common/index.js";
 import { defaultLogLevel, log } from "../common/util/system/system-util.js";
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import type { RpcErrorData, RpcErrorResponse } from "../json-rpc/rpc.model.js";
 
 export type JsonRpcErrorMapper = (error: unknown) => RpcErrorData | null | void | undefined;

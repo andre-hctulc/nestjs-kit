@@ -1,11 +1,6 @@
 import type { HttpException } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import type { CommonPayload } from "../util/responses.js";
-
-export type CommonErrorObject = CommonPayload & {
-    message: string;
-    details: any;
-};
+import type { CommonErrorObject } from "../util/payloads.util.js";
 
 export type ErrorResponseEnhance = (
     req: FastifyRequest,

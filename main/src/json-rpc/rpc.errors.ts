@@ -1,5 +1,5 @@
 import { RpcException } from "@nestjs/microservices";
-import { RpcErrorData } from "./rpc.model.js";
+import type { RpcErrorData } from "./rpc.model.js";
 
 export class RpcInvalidParamsError extends RpcException {
     constructor(message?: string) {

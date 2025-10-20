@@ -1,5 +1,5 @@
-import { MultipartFile } from "@fastify/multipart";
-import { ReadMultipartFile } from "./file-parts.decorators.js";
+import type { MultipartFile } from "@fastify/multipart";
+import type { ReadMultipartFile } from "./file-parts.decorators.js";
 
 export async function parseFilePart(part: MultipartFile): Promise<ReadMultipartFile> {
     const buff = await part.toBuffer();

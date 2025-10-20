@@ -1,5 +1,5 @@
-import { Injectable, CanActivate, ExecutionContext, UnsupportedMediaTypeException } from "@nestjs/common";
-import { FastifyRequest } from "fastify";
+import { Injectable, type CanActivate, type ExecutionContext, UnsupportedMediaTypeException } from "@nestjs/common";
+import { type FastifyRequest } from "fastify";
 
 type ContentTypeCheck = string | string[] | ((contentType: string) => boolean);
 

@@ -1,4 +1,4 @@
-import type { Channel } from "./channels.types.js";
+import type { Channel } from "./channels.model.js";
 
 /**
  * `clientId` refers to the unique client id - Usually obtained from a cookie.
@@ -75,7 +75,7 @@ export class ChannelsManager {
                     this.tryDisconnectChannel(channel);
                 }
                 return !remove;
-            }),
+            })
         );
     }
 
@@ -101,7 +101,7 @@ export class ChannelsManager {
                 }
 
                 return !remove;
-            }),
+            })
         );
     }
 

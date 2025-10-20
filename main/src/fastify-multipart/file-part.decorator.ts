@@ -1,7 +1,7 @@
-import { MultipartFile } from "@fastify/multipart";
-import { createParamDecorator, ExecutionContext, UnsupportedMediaTypeException } from "@nestjs/common";
+import type { MultipartFile } from "@fastify/multipart";
+import { createParamDecorator, type ExecutionContext, UnsupportedMediaTypeException } from "@nestjs/common";
 import type { BusboyConfig } from "busboy";
-import { FastifyRequest } from "fastify";
+import type { FastifyRequest } from "fastify";
 
 /**
  * {@link FilePart} decorator with options.
