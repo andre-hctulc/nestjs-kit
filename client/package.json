@@ -1,6 +1,6 @@
 {
     "name": "@dre44/nestjs-kit-client",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "nestjs-kit Client",
     "type": "module",
     "exports": {
@@ -24,12 +24,11 @@
     "devDependencies": {
         "@types/react": "^19.1.8",
         "tsup": "^8.5.0",
-        "typescript": "^5.8.3",
-        "zod": "^4.1.5"
+        "typescript": "^5.8.3"
     },
     "peerDependencies": {
         "react": "^19.1.0",
         "socket.io-client": "^4.8.1",
-        "zod": "^3.25.67"
+        "zod": "^4.1.5"
     }
 }

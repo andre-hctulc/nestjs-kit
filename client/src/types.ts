@@ -1,2 +1,7 @@
-export type { Accepted, Created, Result, Updated } from "../../main/src/common/util/responses.js";
-export type { CommonErrorObject } from "../../main/src/common/filters/exceptions.types.js";
+export type {
+    Accepted,
+    Created,
+    CommonErrorObject,
+    CommonPayload,
+    Updated,
+} from "../../main/src/common/util/payloads.util.js";

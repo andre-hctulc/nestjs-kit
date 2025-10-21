@@ -1,11 +1,11 @@
 import { useCallback, useState } from "react";
 import { useChannelContext } from "./channel-provider.js";
-import type { ChannelMessage } from "../../../main/src/websockets/channels.model.js";
 import type {
+    ChannelMessage,
     TypedChannelMessageInput,
     TypedChannelMessage,
     AnyPayloadMap,
-} from "../../../main/src/websockets/channels.types.js";
+} from "../../../main/src/websockets/channels.model.js";
 import { createId } from "../system.js";
 
 export interface SendOptions {

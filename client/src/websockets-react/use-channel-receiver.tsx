@@ -4,8 +4,8 @@ import type {
     AnyPayloadMap,
     ChannelMessageInput,
     TypedChannelMessage,
-} from "../../../main/src/websockets/channels.types.js";
-import type { ChannelMessage } from "../../../main/src/websockets/channels.model.js";
+    ChannelMessage,
+} from "../../../main/src/websockets/channels.model.js";
 import { createId, type MaybePromise } from "../system.js";
 
 /**
@@ -89,7 +89,7 @@ export function useChannelReceiver<
                         id: createId(16),
                         response_to: typedMessage.id,
                         type: messageInput.type,
-                        body: messageInput.body,
+                        data: messageInput.data,
                         target: messageInput.target,
                         source: messageInput.source,
                     };
