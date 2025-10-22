@@ -15,7 +15,7 @@ export interface GlobalWsExceptionFilterConfig extends GlobalExceptionFilterConf
 }
 
 /**
- * Catches all errors and maps them to a {@link CommonErrorObject} 
+ * Catches all errors and maps them to a {@link CommonErrorObject}
  * which is sent back to the client via an "error_event" or a custom event name.
  */
 @Catch()
@@ -30,7 +30,12 @@ export abstract class GlobalWsExceptionFilter
         this.#config = { ...config };
     }
 
-    protected override sendError(exception: unknown, error: CommonErrorObject, host: ArgumentsHost): void {
+    protected override sendError(
+        exception: unknown,
+        mappedException: unknown,
+        error: CommonErrorObject,
+        host: ArgumentsHost
+    ): void {
         const ctx = host.switchToWs();
         const client = ctx.getClient<Socket>();
         client.emit(this.#config.errorEventName ?? "error_event", error);

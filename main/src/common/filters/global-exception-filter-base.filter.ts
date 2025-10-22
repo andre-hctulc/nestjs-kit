@@ -35,13 +35,22 @@ export abstract class GlobalExceptionFilterBase<T> {
         this.#innerConfig = { ...innerConfig };
     }
 
-    protected abstract sendError(exception: unknown, error: CommonErrorObject, host: ArgumentsHost): T;
+    protected abstract sendError(
+        originalException: unknown,
+        mappedException: unknown,
+        error: CommonErrorObject,
+        host: ArgumentsHost
+    ): T;
 
     protected abstract at(host: ArgumentsHost): string;
 
     catch(exception: unknown, host: ArgumentsHost): T {
+        const originalException = exception;
+        let mappedException: unknown = undefined;
+
         if (this.#baseConfig.mapErrors) {
             exception = this.#baseConfig.mapErrors(exception) || exception;
+            mappedException = exception;
         }
 
         let error: CommonErrorObject;
@@ -76,7 +85,7 @@ export abstract class GlobalExceptionFilterBase<T> {
 
         this.#logError(host, exception, true);
 
-        return this.sendError(exception, error, host);
+        return this.sendError(originalException, mappedException, error, host);
     }
 
     #logError(host: ArgumentsHost, exception: unknown, unexpected: boolean): void {

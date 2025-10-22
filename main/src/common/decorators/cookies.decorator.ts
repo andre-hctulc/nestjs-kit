@@ -10,7 +10,7 @@ import type { FastifyRequest } from "fastify";
  * @returns The requested cookie(s) or all cookies.
  */
 export const Cookies = createParamDecorator<
-    string[] | string | undefined | never,
+    string[] | string | undefined,
     Record<string, string> | string | undefined
 >((cookieNames, ctx) => {
     const http = ctx.switchToHttp();

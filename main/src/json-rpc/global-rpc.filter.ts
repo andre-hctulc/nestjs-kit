@@ -27,6 +27,7 @@ export class GlobalRpcExceptionFilter
     protected override sendError(
         exception: unknown,
         error: CommonErrorObject,
+        mappedException: unknown,
         host: ArgumentsHost
     ): Observable<any> {
         return throwError(() => exception);

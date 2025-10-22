@@ -7,10 +7,10 @@ type APIAccessConstructor = abstract new (...args: any) => APIAccess;
 // TODO support different context
 /**
  * Decorator to confirm API access. Checks `req.apiAccess` against the provided `AccessClass`.
- * @param AccessClass `ApiAccess` classes to confirm against. If multiple classes are provided, access is granted if any match.
+ * @param AccessClass `ApiAccess` classes to confirm against. If multiple classes are provided, access is granted if any match. Defaults to `APIAccess`.
  */
 export const Access = createParamDecorator<
-    APIAccessConstructor | APIAccessConstructor[] | undefined | null | never,
+    APIAccessConstructor | APIAccessConstructor[] | undefined,
     APIAccess
 >((AccessClass, ctx) => {
     const http = ctx.switchToHttp();

@@ -35,13 +35,23 @@ export class GlobalHttpRpcExceptionFilter extends GlobalExceptionFilterBase<void
         this.#transportStatusCodes = this.#config.transportStatusCodes || TransportHttpErrorCodes;
     }
 
-    protected override sendError(exception: unknown, error: CommonErrorObject, host: ArgumentsHost): void {
+    protected override sendError(
+        originalException: unknown,
+        mappedException: unknown,
+        error: CommonErrorObject,
+        host: ArgumentsHost
+    ): void {
         const ctx = host.switchToHttp();
         const res = ctx.getResponse<FastifyReply>();
         const req = ctx.getRequest<FastifyRequest>();
         const body: Record<string, any> = req.body || {};
         const reqId = typeof body?.id === "string" ? body?.id : null;
-        const status = exception instanceof HttpException ? exception.getStatus() : 500;
+        const status =
+            mappedException instanceof HttpException
+                ? mappedException.getStatus()
+                : originalException instanceof HttpException
+                ? originalException.getStatus()
+                : 500;
 
         let code = Number(error.code ?? status);
         if (isNaN(code)) {
@@ -59,7 +69,7 @@ export class GlobalHttpRpcExceptionFilter extends GlobalExceptionFilterBase<void
         };
 
         const { headers } = this.#config.enhanceResponse
-            ? this.#config.enhanceResponse(req, res, exception)
+            ? this.#config.enhanceResponse(req, res, originalException)
             : { headers: {} };
 
         Object.entries(headers).forEach(([key, value]) => {

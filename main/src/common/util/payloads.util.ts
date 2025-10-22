@@ -75,7 +75,7 @@ export function accepted(): Accepted {
 /**
  * Create a body for a successful query operation.
  */
-export function commonPayload<T>(data: T, more: Record<string, any>): CommonPayload<T> {
+export function commonPayload<T>(data: T, more?: Partial<CommonPayload>): CommonPayload<T> {
     return {
         data,
         code: 200,
@@ -84,6 +84,12 @@ export function commonPayload<T>(data: T, more: Record<string, any>): CommonPayl
     };
 }
 
+const defaultCode = -1;
+
+/**
+ * Convert an object or string into a CommonErrorObject.
+ * @param defaultErrorCode Default error code if none found in the object. Defaults to -1.
+ */
 export function objectToErrorObject(
     obj: object | string,
     defaultErrorCode?: string | number
@@ -91,14 +97,14 @@ export function objectToErrorObject(
     if (typeof obj === "string") {
         return {
             error: obj,
-            code: defaultErrorCode ?? 500,
+            code: defaultErrorCode ?? defaultCode,
             data: {},
         };
     }
 
     obj = { ...obj };
     let message: string = "Internal Server Error";
-    let code: string | number = defaultErrorCode ?? 500;
+    let code: string | number = defaultErrorCode ?? defaultCode;
     let data: any;
 
     if ("message" in obj && typeof obj.message === "string") {

@@ -1,4 +1,4 @@
-import { Catch, type ArgumentsHost, type ExceptionFilter } from "@nestjs/common";
+import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from "@nestjs/common";
 import type { ErrorResponseEnhance } from "./exceptions.types.js";
 import {
     GlobalExceptionFilterBase,
@@ -20,11 +20,11 @@ export class GlobalHttpExceptionFilter extends GlobalExceptionFilterBase<void> i
     #config: HttpExceptionFilterConfig;
 
     constructor(config: HttpExceptionFilterConfig = {}) {
-        super(config, {});
+        super(config, { defaultErrorCode: -1 });
         this.#config = config || {};
     }
 
-    sendError(exception: unknown, error: CommonErrorObject, host: ArgumentsHost) {
+    sendError(exception: unknown, mappedException: unknown, error: CommonErrorObject, host: ArgumentsHost) {
         const ctx = host.switchToHttp();
         const res: FastifyReply = ctx.getResponse();
         const req: FastifyRequest = ctx.getRequest();
@@ -39,7 +39,18 @@ export class GlobalHttpExceptionFilter extends GlobalExceptionFilterBase<void> i
             }
         });
 
-        return res.code(Number(error.code ?? 500)).send(error);
+        const status =
+            mappedException instanceof HttpException
+                ? mappedException.getStatus()
+                : exception instanceof HttpException
+                ? exception.getStatus()
+                : 500;
+
+        if (error.code == null || error.code === "" || error.code === -1) {
+            error.code = status;
+        }
+
+        return res.code(status).send(error);
     }
 
     protected at(host: ArgumentsHost): string {
