@@ -9,18 +9,16 @@ import {
 import { Server, Socket } from "socket.io";
 import { UnauthorizedException } from "@nestjs/common";
 import { ChannelsManager } from "./channels-manager.class.js";
-import { wsErrorInput, wsInput } from "./channels.util.js";
-import {
-    ChannelMessageSchema,
-    type ChannelMessage,
-    type Channel,
-    type ChannelMessageInput,
-    type ChannelMessageResponse,
-    type ChannelSendOptions,
-    type ChannelSendResult,
-} from "./channels.model.js";
 import { randomUUID } from "crypto";
 import type { MaybePromise } from "../common/util/system/system-types.js";
+import type {
+    Channel,
+    ChannelMessageResponse,
+    ChannelSendOptions,
+    ChannelSendResult,
+    WSMessage,
+} from "./channels.model.js";
+import { commonErrorPayload } from "../common/index.js";
 
 declare module "socket.io" {
     interface Socket {
@@ -120,7 +118,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
      */
     protected abstract messageIn(
         client: Socket,
-        payload: ChannelMessage
+        payload: any
     ): MaybePromise<void | undefined | ChannelMessageResponse>;
 
     /**
@@ -202,14 +200,13 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
             throw new UnauthorizedException();
         }
 
-        let responseMessage: ChannelMessageInput | undefined;
+        let responseMessage: any;
 
         try {
-            const message = ChannelMessageSchema.parse(payload);
-            const res = await this.messageIn(client, message);
+            const res = await this.messageIn(client, payload);
 
-            if (res) {
-                responseMessage = { ...res.response, response_to: message.id };
+            if (res?.response) {
+                responseMessage = { ...res.response, response_to: res.response.id };
             }
 
             this.logVerbose(client.id, "Message in", {
@@ -218,8 +215,9 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
                 payload,
             });
         } catch (err) {
-            this.logError(client, err, "Message parse failed");
-            this.sendToChannel(client.userId, client.id, wsErrorInput(err));
+            const errMessage = "Message parse failed";
+            this.logError(client, err, errMessage);
+            this.sendToChannel(client.userId, client.id, commonErrorPayload(errMessage));
             return false;
         }
 
@@ -239,7 +237,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
     async sendToChannel(
         userId: string,
         channelId: string,
-        message: ChannelMessageInput,
+        message: any,
         options?: ChannelSendOptions
     ): Promise<ChannelSendResult> {
         const channel = this.channels.getChannel(userId, channelId);
@@ -251,7 +249,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
         }
 
         const messageId = randomUUID();
-        let responseMessage: ChannelMessage | undefined;
+        let responseMessage: WSMessage | undefined;
 
         try {
             channel.socket.emit(STC_EVENT, {
@@ -269,7 +267,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
             let responseListener: ((payload: any) => void) | undefined;
 
             try {
-                responseMessage = await new Promise<ChannelMessage>((resolve, reject) => {
+                responseMessage = await new Promise<WSMessage>((resolve, reject) => {
                     setTimeout(() => {
                         reject(new Error("Response timeout"));
                     }, options.responseTimeout || 10000);
@@ -282,13 +280,11 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
                                 return;
                             }
 
-                            const message = ChannelMessageSchema.parse(payload);
-
-                            if (!message) {
+                            if (!payload) {
                                 return reject(new Error("Invalid response"));
                             }
 
-                            resolve(message);
+                            resolve(payload);
                         })
                     );
                 });
@@ -305,7 +301,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
             }
         }
 
-        return { success: true, response: responseMessage };
+        return { success: true, responseMessage };
     }
 
     /**
@@ -314,7 +310,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
     sendToClient(
         userId: string,
         clientId: string,
-        message: ChannelMessageInput,
+        message: WSMessage,
         options?: ChannelSendOptions
     ): Promise<ChannelSendResult> {
         const channel = this.channels.getChannel(userId, clientId);
@@ -330,7 +326,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
      */
     sendToUser(
         userId: string,
-        payload: ChannelMessageInput,
+        payload: WSMessage,
         options?: ChannelSendOptions
     ): Promise<ChannelSendResult[]> {
         const channels = this.channels.findChannels(userId, null);
@@ -349,7 +345,7 @@ export abstract class ChannelsGateway implements OnGatewayInit, OnGatewayConnect
      *
      * @returns Send success
      */
-    broadcast(payload: ChannelMessageInput): boolean {
+    broadcast(payload: WSMessage): boolean {
         if (!payload.source) {
             payload.source = "system";
         }

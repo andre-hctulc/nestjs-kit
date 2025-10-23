@@ -84,7 +84,18 @@ export function commonPayload<T>(data: T, more?: Partial<CommonPayload>): Common
     };
 }
 
-const defaultCode = -1;
+export function commonErrorPayload(
+    errorMessage: string,
+    more?: Partial<CommonErrorObject>
+): CommonErrorObject {
+    return {
+        data: undefined,
+        message: errorMessage,
+        error: {},
+        code: 500,
+        ...more,
+    };
+}
 
 /**
  * Convert an object or string into a CommonErrorObject.
@@ -94,9 +105,16 @@ export function objectToErrorObject(
     obj: object | string,
     defaultErrorCode?: string | number
 ): CommonErrorObject {
+    const defaultCode = -1;
     if (typeof obj === "string") {
         return {
             error: obj,
+            code: defaultErrorCode ?? defaultCode,
+            data: {},
+        };
+    } else if (!obj || typeof obj !== "object") {
+        return {
+            error: "Internal Server Error",
             code: defaultErrorCode ?? defaultCode,
             data: {},
         };
@@ -106,6 +124,12 @@ export function objectToErrorObject(
     let message: string = "Internal Server Error";
     let code: string | number = defaultErrorCode ?? defaultCode;
     let data: any;
+    let error: any;
+
+    if ("error" in obj) {
+        error = obj.error;
+        delete obj.error;
+    }
 
     if ("message" in obj && typeof obj.message === "string") {
         message = obj.message;
@@ -123,7 +147,8 @@ export function objectToErrorObject(
     }
 
     return {
-        error: message,
+        error: error ?? {},
+        message,
         code,
         data: data ?? obj,
     };

@@ -1,34 +1,10 @@
 import type { Socket } from "socket.io";
-import { z } from "zod";
+import type { CommonPayload } from "../common/index.js";
 
-export const ChannelMessageSchema = z.object({
-    /**
-     * Unique message id
-     */
-    id: z.string(),
-    /**
-     * Message id
-     */
-    response_to: z.string().optional(),
-    /**
-     * Defaults to `expectResponse` option if not set.
-     */
-    expect_response: z.boolean().optional(),
-    type: z.string(),
-    code: z.number().or(z.string()).optional(),
-    error: z.any().optional(),
-    data: z.any(),
-    details: z.record(z.string(), z.any()).optional(),
-    /**
-     * Generic target for the event.
-     */
-    target: z.string().optional(),
-    /**
-     * Generic source for the event.
-     */
-    source: z.string().optional(),
-});
-export type ChannelMessage = z.infer<typeof ChannelMessageSchema>;
+export type WSMessage = CommonPayload & {
+    id?: string;
+    response_to?: string;
+};
 
 /**
  * Channels are tied to/identified by a client (device), the user and a type.
@@ -57,23 +33,8 @@ export interface ChannelSendOptions {
     responseTimeout?: number;
 }
 
-export type ChannelSendResult = { success: boolean; response?: ChannelMessage };
+export type ChannelSendResult = { success: boolean; responseMessage?: any };
 
-export type ChannelMessageInput = Omit<ChannelMessage, "id">;
-
-/**
- * @template T Message Type.
- * @template M Message-Payload Map.
- */
-export type TypedChannelMessage<M extends object, T extends string & keyof M> = Omit<
-    ChannelMessage,
-    "data" | "type"
-> & { data: M[T]; type: T };
-export type TypedChannelMessageInput<M extends object, T extends string & keyof M> = Omit<
-    TypedChannelMessage<M, T>,
-    "id"
->;
-
-export type ChannelMessageResponse = { response: Omit<ChannelMessageInput, "response_to"> };
+export type ChannelMessageResponse = { response: WSMessage };
 
 export type AnyPayloadMap = Record<string, Record<string, any>>;
