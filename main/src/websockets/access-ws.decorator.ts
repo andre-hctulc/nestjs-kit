@@ -3,12 +3,11 @@ import { APIAccess, commonErrorPayload, type APIAccessConstructor } from "../com
 import type { Socket } from "socket.io";
 import { WsException } from "@nestjs/websockets";
 
-// TODO support different context
 /**
  * Decorator to confirm API access. Checks `client.handshake.auth.apiAccess` against the provided `AccessClass`.
  * @param AccessClass `ApiAccess` classes to confirm against. If multiple classes are provided, access is granted if any match. Defaults to `APIAccess`.
  */
-export const AccessWS = createParamDecorator<
+export const AccessWs = createParamDecorator<
     APIAccessConstructor | APIAccessConstructor[] | undefined,
     APIAccess
 >((AccessClass, ctx) => {

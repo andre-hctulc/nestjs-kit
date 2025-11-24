@@ -4,7 +4,6 @@ import { APIAccess } from "../util/api-access.class.js";
 
 export type APIAccessConstructor = abstract new (...args: any) => APIAccess;
 
-// TODO support different context
 /**
  * Decorator to confirm API access. Checks `req.apiAccess` against the provided `AccessClass`.
  * @param AccessClass `ApiAccess` classes to confirm against. If multiple classes are provided, access is granted if any match. Defaults to `APIAccess`.
