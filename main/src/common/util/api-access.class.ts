@@ -62,7 +62,7 @@ export abstract class APIAccess {
      * Returns false if the permissions array is empty!
      */
     hasPermissions(...permissions: PermissionDefinition[]): boolean {
-        if (!permissions.length) {
+        if (!permissions?.length) {
             return false;
         }
         return permissions.every((p) => hasPermission(this.role, p));

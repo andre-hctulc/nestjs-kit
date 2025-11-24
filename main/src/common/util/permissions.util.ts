@@ -15,8 +15,9 @@ const allPermissions: Map<string, PermissionDefinition> = new Map();
 
 /**
  * Defines a set of permissions. The set gets registered globally and can be retrieved later.
+ * @param skipRegistration If true, the permissions won't be registered globally.
  */
-export function definePermissionSet(set: PermissionSet): PermissionSet {
+export function definePermissionSet<S extends PermissionSet>(set: S, skipRegistration?: boolean): S {
     const resultSet: PermissionSet = {};
     Object.entries(set).forEach(([key, def]) => {
         const mountedDef: PermissionDefinition = {
@@ -28,10 +29,12 @@ export function definePermissionSet(set: PermissionSet): PermissionSet {
             value: true,
             writable: false,
         });
-        allPermissions.set(def.name, mountedDef);
+        if (!skipRegistration) {
+            allPermissions.set(def.name, mountedDef);
+        }
         resultSet[key] = mountedDef;
     });
-    return resultSet;
+    return resultSet as S;
 }
 
 /**
@@ -57,5 +60,5 @@ export function hasPermission(role: string, permission: PermissionDefinition) {
             "Permission definition not mounted properly. Use `definePermissionSet` to define permission sets."
         );
     }
-    return permission.roles.includes(role);
+    return permission?.roles.includes(role);
 }
