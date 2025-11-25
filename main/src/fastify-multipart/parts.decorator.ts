@@ -2,7 +2,7 @@ import { createParamDecorator, type ExecutionContext } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
 import { parseFilePart } from "./fastify-multipart.util.js";
 import type { BusboyConfig } from "busboy";
-import { isPlainObject } from "../common/util/system/system-util.js";
+import { isPlainObject } from "../common/util/logs.util.js";
 import { flatten } from "./fastify-multipart-system.util.js";
 
 async function toMap(

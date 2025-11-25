@@ -1,7 +1,7 @@
-import { type ArgumentsHost, Catch, type ExceptionFilter } from "@nestjs/common";
+import { type ArgumentsHost, Catch, type ExceptionFilter, type LogLevel } from "@nestjs/common";
 import { ZodError } from "zod";
-import type { CommonErrorObject, LogLevel } from "../common/index.js";
-import { log } from "../common/util/system/system-util.js";
+import type { CommonErrorObject } from "../common/index.js";
+import { defaultLogLevel, log } from "../common/util/logs.util.js";
 import type { RpcErrorData } from "../json-rpc/rpc.model.js";
 
 interface ZodExceptionFilterOptions {
@@ -18,10 +18,10 @@ interface ZodExceptionFilterOptions {
  */
 @Catch(ZodError)
 export class ZodExceptionFilter implements ExceptionFilter {
-    private logLevel: LogLevel;
+    #logLevel: LogLevel;
 
     constructor(options: ZodExceptionFilterOptions = {}) {
-        this.logLevel = options.logLevel || "silent";
+        this.#logLevel = options.logLevel || defaultLogLevel();
     }
 
     async catch(exception: ZodError, host: ArgumentsHost) {
@@ -34,7 +34,7 @@ export class ZodExceptionFilter implements ExceptionFilter {
             code: 400,
         };
 
-        log(this.logLevel, "error", exception);
+        log("debug", this.#logLevel, exception);
 
         if (ctxType === "http") {
             const http = host.switchToHttp();

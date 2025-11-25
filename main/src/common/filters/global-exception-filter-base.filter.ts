@@ -1,7 +1,6 @@
-import { type ArgumentsHost, Catch, HttpException } from "@nestjs/common";
-import type { LogLevel } from "../util/types.js";
+import { type ArgumentsHost, Catch, HttpException, type LogLevel } from "@nestjs/common";
 import { objectToErrorObject, type CommonErrorObject } from "../util/payloads.util.js";
-import { log } from "../util/system/system-util.js";
+import { defaultLogLevel, log } from "../util/logs.util.js";
 
 export type ErrorMapper = (error: unknown) => CommonErrorObject | Error | null | void | undefined;
 
@@ -31,7 +30,7 @@ export abstract class GlobalExceptionFilterBase<T> {
 
     constructor(config: GlobalExceptionFilterConfig = {}, innerConfig: InnerConfig = {}) {
         this.#baseConfig = { ...config };
-        this.#logLevel = this.#baseConfig.logLevel || "error";
+        this.#logLevel = this.#baseConfig.logLevel || defaultLogLevel();
         this.#innerConfig = { ...innerConfig };
     }
 
@@ -89,6 +88,6 @@ export abstract class GlobalExceptionFilterBase<T> {
     }
 
     #logError(host: ArgumentsHost, exception: unknown, unexpected: boolean): void {
-        log(this.#logLevel, unexpected ? "verbose" : "error", `ERR at ${this.at(host)}:\n`, exception);
+        log(unexpected ? "error" : "debug", this.#logLevel, `ERR at ${this.at(host)}:\n`, exception);
     }
 }
