@@ -30,21 +30,34 @@ function getPre(level: LogLevel): string {
     }
 }
 
-/**
- * `checkLevel <= activeLevel` then log the message
- */
-export function log(checkLevel: LogLevel, activeLevel: LogLevel, ...message: any[]): void {
+function shouldLog(checkLevel: LogLevel, activeLevel: LogLevel): boolean {
     // Define log level hierarchy (higher index = more verbose)
     const logLevels: LogLevel[] = ["fatal", "error", "warn", "log", "debug", "verbose"];
     const checkIndex = logLevels.indexOf(checkLevel);
     const activeIndex = logLevels.indexOf(activeLevel);
 
     // Only log if the severity level is at or below the current log level
-    if (checkIndex === -1 || activeIndex === -1 || activeIndex < checkIndex) {
+    return !(checkIndex === -1 || activeIndex === -1 || activeIndex < checkIndex);
+}
+
+/**
+ * `checkLevel <= activeLevel` then log the message
+ */
+export function log(checkLevel: LogLevel, activeLevel: LogLevel, ...message: any[]): void {
+    if (!shouldLog(checkLevel, activeLevel)) {
         return;
     }
-
     console.log(getPre(checkLevel));
+    console.log(...message);
+}
+
+/**
+ * `checkLevel <= activeLevel` then log the message
+ */
+export function logRaw(checkLevel: LogLevel, activeLevel: LogLevel, ...message: any[]): void {
+    if (!shouldLog(checkLevel, activeLevel)) {
+        return;
+    }
     console.log(...message);
 }
 
