@@ -7,7 +7,7 @@ export function defaultLogLevel(): LogLevel {
     return "error";
 }
 
-const PRE = "--<< nestjs-kit >>--";
+const PRE = "\x1b[31m[nestjs-kit]\x1b[0m";
 
 /**
  * `checkLevel <= activeLevel` then log the message
@@ -24,7 +24,8 @@ export function log(checkLevel: LogLevel, activeLevel: LogLevel, ...message: any
     }
 
     const _log = activeLevel === "error" || activeLevel === "fatal" ? console.error : console.log;
-    _log(PRE, "\n", ...message);
+    _log(PRE);
+    _log(...message)
 }
 
 export function hasKeys(obj: object): boolean {
