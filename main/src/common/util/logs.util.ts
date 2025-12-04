@@ -44,9 +44,8 @@ export function log(checkLevel: LogLevel, activeLevel: LogLevel, ...message: any
         return;
     }
 
-    const logger = activeLevel === "error" || activeLevel === "fatal" ? console.error : console.log;
-    logger(getPre(activeLevel));
-    logger(...message);
+    console.log(getPre(checkLevel));
+    console.log(...message);
 }
 
 export function hasKeys(obj: object): boolean {
