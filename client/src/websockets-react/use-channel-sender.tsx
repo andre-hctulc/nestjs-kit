@@ -1,11 +1,6 @@
 import { useCallback, useState } from "react";
 import { useChannelContext } from "./channel-provider.js";
-import type {
-    ChannelMessage,
-    TypedChannelMessageInput,
-    TypedChannelMessage,
-    AnyPayloadMap,
-} from "../../../main/src/websockets/channels.model.js";
+import type { AnyPayloadMap, WSMessage } from "../../../main/src/websockets/channels.model.js";
 import { createId } from "../system.js";
 
 export interface SendOptions {
@@ -49,9 +44,9 @@ export enum ChannelMessageResolveReason {
 
 export type ChannelSenderResult = {
     resolveReason: ChannelMessageResolveReason;
-    responseMessage: null | ChannelMessage;
+    responseMessage: null | WSMessage;
     error: Error | null;
-    messageSent: ChannelMessage | null;
+    messageSent: WSMessage | null;
 };
 
 /**
@@ -59,20 +54,14 @@ export type ChannelSenderResult = {
  * @param sendOptions Overwrites base send options
  * @returns The response message (if any)
  */
-export type ChannelSender<
-    M extends AnyPayloadMap = AnyPayloadMap,
-    T extends string & keyof M = string & keyof M
-> = (
-    type: T,
-    message: Omit<TypedChannelMessageInput<M, T>, "type">,
+export type ChannelSender = (
+    type: string,
+    message: Omit<WSMessage, "type">,
     sendOptions?: SendOptions
 ) => Promise<ChannelSenderResult>;
 
-export interface UseChannelSenderResult<
-    M extends AnyPayloadMap = AnyPayloadMap,
-    T extends string & keyof M = string & keyof M
-> {
-    send: ChannelSender<M, T>;
+export interface UseChannelSenderResult {
+    send: ChannelSender;
     /**
      * Whether a message is currently being sent
      */
@@ -80,11 +69,11 @@ export interface UseChannelSenderResult<
     /**
      * The latest message that was sent
      */
-    currentMessage: TypedChannelMessage<M, T> | null;
+    currentMessage: WSMessage | null;
     /**
      * The latest response to the {@link currentMessage}
      */
-    responseMessage: ChannelMessage | null;
+    responseMessage: WSMessage | null;
     /**
      * Latest response error
      */
@@ -98,21 +87,22 @@ export interface UseChannelSenderResult<
 export function useChannelSender<
     M extends AnyPayloadMap = AnyPayloadMap,
     T extends string & keyof M = string & keyof M
->(options?: SendOptions): UseChannelSenderResult<M, T> {
+>(options?: SendOptions): UseChannelSenderResult {
     const { socket } = useChannelContext(options?.uri);
     const [isSending, setIsSending] = useState(false);
-    const [currentMessage, setCurrentMessage] = useState<TypedChannelMessage<M, T> | null>(null);
-    const [response, setResponse] = useState<ChannelMessage | null>(null);
+    const [currentMessage, setCurrentMessage] = useState<WSMessage | null>(null);
+    const [response, setResponse] = useState<WSMessage | null>(null);
     const [responseError, setResponseError] = useState<Error | null>(null);
     const [sendError, setSendError] = useState<Error | null>(null);
 
     const send = useCallback(
         async <T extends string & keyof M>(
             type: T,
-            input: Omit<TypedChannelMessageInput<M, T>, "type">,
+            input: Omit<WSMessage, "type">,
             sendOptions?: SendOptions
         ) => {
-            const message: TypedChannelMessage<M, T> = {
+            const message: WSMessage = {
+                data: undefined,
                 ...input,
                 id: createId(16),
                 type,
@@ -185,7 +175,7 @@ export function useChannelSender<
                     } satisfies ChannelSenderResult);
                 }, timeout);
 
-                socket.on("event_stc", (response: ChannelMessage) => {
+                socket.on("event_stc", (response: WSMessage) => {
                     // response timed out
                     if (timedOut) {
                         return;

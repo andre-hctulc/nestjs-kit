@@ -1,25 +1,15 @@
 import { useEffect, useRef } from "react";
 import { useChannelContext } from "./channel-provider.js";
-import type {
-    AnyPayloadMap,
-    ChannelMessageInput,
-    TypedChannelMessage,
-    ChannelMessage,
-} from "../../../main/src/websockets/channels.model.js";
+import type { WSMessage } from "../../../main/src/websockets/channels.model.js";
 import { createId, type MaybePromise } from "../system.js";
 
 /**
  * Response objects are only respected when the message has {@link ChannelMessage.response_to} set.
  * @returns An optional response message
  */
-export type ChannelReceiver<
-    M extends AnyPayloadMap = AnyPayloadMap,
-    T extends string & keyof M = string & keyof M
-> = (message: TypedChannelMessage<M, T>) => MaybePromise<ChannelMessageInput | void>;
-export type ChannelReceiverFilter<
-    M extends AnyPayloadMap = AnyPayloadMap,
-    T extends string & keyof M = string & keyof M
-> = (message: TypedChannelMessage<M, T>) => boolean;
+export type ChannelReceiver = (message: WSMessage) => MaybePromise<WSMessage | void>;
+
+export type ChannelReceiverFilter = (message: WSMessage) => boolean;
 
 export interface ChannelMessageReceiverOptions {
     /**
@@ -31,13 +21,10 @@ export interface ChannelMessageReceiverOptions {
 /**
  * @param type The type of the message to listen for. If null, all messages are received.
  */
-export function useChannelReceiver<
-    M extends AnyPayloadMap = AnyPayloadMap,
-    T extends string & keyof M = string & keyof M
->(
+export function useChannelReceiver(
     type: string | null,
-    receiver: ChannelReceiver<M, T>,
-    filter?: ChannelReceiverFilter<M, T>,
+    receiver: ChannelReceiver,
+    filter?: ChannelReceiverFilter,
     options?: ChannelMessageReceiverOptions
 ) {
     const { socket } = useChannelContext(options?.uri);
@@ -53,7 +40,7 @@ export function useChannelReceiver<
     }, [receiver]);
 
     useEffect(() => {
-        socket.on("event_stc", async (message: ChannelMessage) => {
+        socket.on("event_stc", async (message: WSMessage) => {
             // Naive check for message object
             if (
                 typeof message !== "object" ||
@@ -68,7 +55,7 @@ export function useChannelReceiver<
                 return;
             }
 
-            const typedMessage = message as TypedChannelMessage<M, T>;
+            const typedMessage = message as WSMessage;
 
             // Apply filter
             if (filterRef.current && !filterRef.current(typedMessage)) {
@@ -85,7 +72,7 @@ export function useChannelReceiver<
                 if (receiverResult) {
                     const messageInput = receiverResult;
 
-                    const responseMessage: ChannelMessage = {
+                    const responseMessage: WSMessage = {
                         id: createId(16),
                         response_to: typedMessage.id,
                         type: messageInput.type,
