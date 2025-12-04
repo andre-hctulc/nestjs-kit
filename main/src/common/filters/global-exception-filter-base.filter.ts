@@ -88,6 +88,8 @@ export abstract class GlobalExceptionFilterBase<T> {
     }
 
     #logError(host: ArgumentsHost, exception: unknown, unexpected: boolean): void {
-        log(unexpected ? "error" : "debug", this.#logLevel, `ERR at ${this.at(host)}:\n`, exception);
+        const severity = unexpected ? "error" : "debug";
+        log(severity, this.#logLevel, `ERR at ${this.at(host)}:`);
+        log(severity, this.#logLevel, exception);
     }
 }
