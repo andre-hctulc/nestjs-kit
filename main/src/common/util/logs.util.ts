@@ -7,7 +7,28 @@ export function defaultLogLevel(): LogLevel {
     return "error";
 }
 
-const PRE = "\x1b[31m[nestjs-kit]\x1b[0m";
+const PRE_RED = "\x1b[31m[nestjs-kit]\x1b[0m";
+const PRE_BLUE = "\x1b[34m[nestjs-kit]\x1b[0m";
+const PRE_YELLOW = "\x1b[33m[nestjs-kit]\x1b[0m";
+const PRE_MAGENTA = "\x1b[35m[nestjs-kit]\x1b[0m";
+const PRE_GRAY = "\x1b[90m[nestjs-kit]\x1b[0m";
+
+function getPre(level: LogLevel): string {
+    switch (level) {
+        case "verbose":
+        case "log":
+            return PRE_BLUE;
+        case "debug":
+            return PRE_MAGENTA;
+        case "warn":
+            return PRE_YELLOW;
+        case "error":
+        case "fatal":
+            return PRE_RED;
+        default:
+            return PRE_GRAY;
+    }
+}
 
 /**
  * `checkLevel <= activeLevel` then log the message
@@ -23,9 +44,9 @@ export function log(checkLevel: LogLevel, activeLevel: LogLevel, ...message: any
         return;
     }
 
-    const _log = activeLevel === "error" || activeLevel === "fatal" ? console.error : console.log;
-    _log(PRE);
-    _log(...message)
+    const logger = activeLevel === "error" || activeLevel === "fatal" ? console.error : console.log;
+    logger(getPre(activeLevel));
+    logger(...message);
 }
 
 export function hasKeys(obj: object): boolean {
