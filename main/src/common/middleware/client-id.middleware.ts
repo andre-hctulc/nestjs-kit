@@ -3,8 +3,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { parse, serialize, type SerializeOptions } from "cookie";
 import { randomUUID } from "crypto";
 
-declare module "express" {
-    interface Request {
+declare module "fastify" {
+    interface FastifyRequest {
         /**
          * The client ID cookie value.
          *
@@ -32,7 +32,7 @@ declare module "express" {
  *
  * For fastify we receive an internal request object in the middleware, so we cannot define _clientId_ as a property on the request itself.
  * It can still be accessed wih `req.raw.clientId`.
- * 
+ *
  * Use {@link ClientIdMiddleware.fromRequest} to get the client ID from the request reliably.
  */
 export abstract class ClientIdMiddleware implements NestMiddleware {
@@ -62,7 +62,7 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
 
     /**
      * Retrieve the client id from a request.
-     * 
+     *
      * Throws {@link UnauthorizedException} if the client id is not present.
      */
     static fromRequestOrThrow(req: any): string {

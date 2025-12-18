@@ -8,11 +8,10 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { UnauthorizedException } from "@nestjs/common";
-import { ChannelsManager } from "./channels-manager.class.js";
+import { ChannelsManager, type Channel } from "./channels-manager.class.js";
 import { randomUUID } from "crypto";
 import type { MaybePromise } from "../common/util/system/system-types.js";
 import type {
-    Channel,
     ChannelMessageResponse,
     ChannelSendOptions,
     ChannelSendResult,

@@ -1,4 +1,22 @@
-import type { Channel } from "./channels.model.js";
+import type { Socket } from "socket.io";
+
+/**
+ * Channels are tied to/identified by a client (device), the user and a type.
+ * Each channel variation can only exist once.
+ */
+export interface Channel {
+    /**
+     * Unique channel ID. Equals the socket id.
+     */
+    id: string;
+    userId: string;
+    /**
+     * Obtained from te client id cookie.
+     */
+    clientId: string;
+    spaceId?: string;
+    socket: Socket;
+}
 
 /**
  * `clientId` refers to the unique client id - Usually obtained from a cookie.

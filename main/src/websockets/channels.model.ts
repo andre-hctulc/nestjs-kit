@@ -1,4 +1,3 @@
-import type { Socket } from "socket.io";
 import type { CommonPayload } from "../common/index.js";
 
 export type WSMessage = CommonPayload & {
@@ -6,23 +5,6 @@ export type WSMessage = CommonPayload & {
     response_to?: string;
 };
 
-/**
- * Channels are tied to/identified by a client (device), the user and a type.
- * Each channel variation can only exist once.
- */
-export interface Channel {
-    /**
-     * Unique channel ID. Equals the socket id.
-     */
-    id: string;
-    userId: string;
-    /**
-     * Obtained from te client id cookie.
-     */
-    clientId: string;
-    spaceId?: string;
-    socket: Socket;
-}
 
 export interface ChannelSendOptions {
     expectResponse?: boolean;

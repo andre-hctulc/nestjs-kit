@@ -54,8 +54,13 @@ export class GlobalHttpExceptionFilter extends GlobalExceptionFilterBase<void> i
     }
 
     protected at(host: ArgumentsHost): string {
+        const MAX_URL_DISPLAY_LENGTH = 100;
         const ctx = host.switchToHttp();
         const req: FastifyRequest = ctx.getRequest();
-        return `HTTP [${req.method}] ${req.url.slice(0, 60)}`;
+        const urlStr =
+            req.url.length > MAX_URL_DISPLAY_LENGTH
+                ? `${req.url.slice(0, MAX_URL_DISPLAY_LENGTH)}...`
+                : req.url;
+        return `HTTP (${req.method.toUpperCase()}) ${urlStr}`;
     }
 }
