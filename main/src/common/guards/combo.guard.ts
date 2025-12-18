@@ -21,7 +21,7 @@ export class ComboGuard implements CanActivate {
         }
     }
 
-    async canActivate(context: import("@nestjs/common").ExecutionContext): Promise<boolean> {
+    async canActivate(context: any): Promise<boolean> {
         const orMode = this.mode === "OR";
 
         for (const guard of this.guards) {
