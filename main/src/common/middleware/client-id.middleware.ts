@@ -30,6 +30,7 @@ export interface ClientIdMiddlewareOptions {
     cookieName?: string;
     cookieOptions?: Partial<SerializeOptions>;
     /**
+     * Set client id cookie if not present.
      * @default true
      */
     setCookies?: boolean;
@@ -115,9 +116,10 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
 
         // get from header
         if (this.#mode !== "cookie") {
+            const headerClientId = req.headers[this.#headerName];
             // X-Client-ID header takes precedence
-            if (typeof req.headers[this.#headerName] === "string") {
-                clientId = req.headers[this.#headerName] as string;
+            if (typeof headerClientId === "string" && headerClientId) {
+                clientId = headerClientId;
                 (req as any).clientId = clientId;
                 return next();
             }
@@ -129,22 +131,22 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
             const cookies = parse(req.headers.cookie || "");
             clientId = cookies[this.#cookieName];
 
-            if (!clientId) {
+            // Set cookie in response if not present
+            if (!clientId && this.#setCookies) {
                 clientId = randomUUID();
 
-                if (this.#setCookies) {
-                    const setCookie = serialize(this.#cookieName, clientId, {
-                        httpOnly: true,
-                        secure: true,
-                        path: "/",
-                        ...this.#cookieOptions,
-                    });
+                const setCookie = serialize(this.#cookieName, clientId, {
+                    httpOnly: true,
+                    secure: true,
+                    path: "/",
+                    ...this.#cookieOptions,
+                });
 
-                    res.appendHeader("Set-Cookie", setCookie);
-                }
+                res.appendHeader("Set-Cookie", setCookie);
+                (req as any).clientId = clientId;
+            } else if (clientId) {
+                (req as any).clientId = clientId;
             }
-
-            (req as any).clientId = clientId;
         }
 
         next();
