@@ -2,6 +2,7 @@ import { UnauthorizedException, type NestMiddleware } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { parse, serialize, type SerializeOptions } from "cookie";
 import { randomUUID } from "crypto";
+import { UnauthorizedClientError } from "./middleware.errors.js";
 
 declare module "fastify" {
     interface FastifyRequest {
@@ -87,7 +88,7 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
     static fromRequestOrThrow(req: any): string {
         const clientId = ClientIdMiddleware.fromRequest(req);
         if (!clientId) {
-            throw new UnauthorizedException();
+            throw new UnauthorizedClientError();
         }
         return clientId;
     }
