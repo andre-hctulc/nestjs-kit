@@ -14,6 +14,23 @@ declare module "fastify" {
     }
 }
 
+export interface ClientIdMiddlewareOptions {
+    /**
+     * Mode. Extract client ID from header, cookie, or dynamically choose.
+     * @default "dynamic"
+     */
+    mode?: "dynamic" | "header" | "cookie";
+    /**
+     * @default "X-Client-ID"
+     */
+    headerName?: string;
+    /**
+     * @default "client_id"
+     */
+    cookieName?: string;
+    cookieOptions?: Partial<SerializeOptions>;
+}
+
 /**
  * Ensures that an ID cookie is set for each client.
  * If the cookie is not present, it generates a new UUID and sets it as a cookie.
@@ -39,13 +56,10 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
     /**
      * Middleware factory. Optionally extend this class.
      */
-    static create(
-        cookieName: string,
-        cookieOptions: Partial<SerializeOptions> = {}
-    ): new () => ClientIdMiddleware {
+    static create(options: ClientIdMiddlewareOptions = {}): new () => ClientIdMiddleware {
         return class extends ClientIdMiddleware {
             constructor() {
-                super(cookieName, cookieOptions);
+                super(options);
             }
         };
     }
@@ -73,33 +87,57 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
         return clientId;
     }
 
-    constructor(private cookieName: string, private cookieOptions: Partial<SerializeOptions> = {}) {}
+    #cookieOptions: Partial<SerializeOptions>;
+    #cookieName: string;
+    #headerName: string;
+    #mode: ClientIdMiddlewareOptions["mode"];
 
-    // TODO May need adjustments for express
+    constructor(options: ClientIdMiddlewareOptions = {}) {
+        this.#cookieOptions = options.cookieOptions || {};
+        this.#cookieName = options.cookieName || "client_id";
+        this.#headerName = options.headerName || "X-Client-ID";
+        this.#mode = options.mode || "dynamic";
+    }
+
     use(req: FastifyRequest["raw"], res: FastifyReply["raw"], next: () => void) {
         let clientId: string | undefined = (req as any).clientId;
 
-        if (clientId) {
+        // get from existing property
+        if (typeof clientId === "string") {
             return next();
         }
 
-        const cookies = parse(req.headers.cookie || "");
-        clientId = cookies[this.cookieName];
-
-        if (!clientId) {
-            clientId = randomUUID();
-
-            const setCookie = serialize(this.cookieName, randomUUID(), {
-                httpOnly: true,
-                secure: true,
-                path: "/",
-                ...this.cookieOptions,
-            });
-
-            res.appendHeader("Set-Cookie", setCookie);
+        // get from header
+        if (this.#mode !== "cookie") {
+            // X-Client-ID header takes precedence
+            if (typeof req.headers[this.#headerName] === "string") {
+                clientId = req.headers[this.#headerName] as string;
+                (req as any).clientId = clientId;
+                return next();
+            }
         }
 
-        (req as any).clientId = clientId;
+        // get from cookie
+        if (this.#mode !== "header") {
+            // Check cookies
+            const cookies = parse(req.headers.cookie || "");
+            clientId = cookies[this.#cookieName];
+
+            if (!clientId) {
+                clientId = randomUUID();
+
+                const setCookie = serialize(this.#cookieName, randomUUID(), {
+                    httpOnly: true,
+                    secure: true,
+                    path: "/",
+                    ...this.#cookieOptions,
+                });
+
+                res.appendHeader("Set-Cookie", setCookie);
+            }
+
+            (req as any).clientId = clientId;
+        }
 
         next();
     }
