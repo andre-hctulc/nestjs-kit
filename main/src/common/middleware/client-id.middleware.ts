@@ -29,6 +29,10 @@ export interface ClientIdMiddlewareOptions {
      */
     cookieName?: string;
     cookieOptions?: Partial<SerializeOptions>;
+    /**
+     * @default true
+     */
+    setCookies?: boolean;
 }
 
 /**
@@ -91,12 +95,14 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
     #cookieName: string;
     #headerName: string;
     #mode: ClientIdMiddlewareOptions["mode"];
+    #setCookies: boolean = true;
 
     constructor(options: ClientIdMiddlewareOptions = {}) {
         this.#cookieOptions = options.cookieOptions || {};
         this.#cookieName = options.cookieName || "client_id";
         this.#headerName = options.headerName || "X-Client-ID";
         this.#mode = options.mode || "dynamic";
+        this.#setCookies = options.setCookies ?? true;
     }
 
     use(req: FastifyRequest["raw"], res: FastifyReply["raw"], next: () => void) {
@@ -126,14 +132,16 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
             if (!clientId) {
                 clientId = randomUUID();
 
-                const setCookie = serialize(this.#cookieName, randomUUID(), {
-                    httpOnly: true,
-                    secure: true,
-                    path: "/",
-                    ...this.#cookieOptions,
-                });
+                if (this.#setCookies) {
+                    const setCookie = serialize(this.#cookieName, clientId, {
+                        httpOnly: true,
+                        secure: true,
+                        path: "/",
+                        ...this.#cookieOptions,
+                    });
 
-                res.appendHeader("Set-Cookie", setCookie);
+                    res.appendHeader("Set-Cookie", setCookie);
+                }
             }
 
             (req as any).clientId = clientId;
