@@ -6,10 +6,12 @@ export interface CommonPayload<T = any> {
     code?: string | number;
     message?: string;
     data_length?: number;
+    success?: boolean;
+    size?: number;
     [key: string]: any;
 }
 
-export interface Accepted extends Omit<CommonPayload, "data"> {
+export interface Accepted extends CommonPayload<undefined> {
     code: 200;
 }
 
@@ -50,6 +52,7 @@ export function created<T = string>(created: T): Created<T> {
         data: created,
         accepted: true,
         resultLength: dataLength(created),
+        success: true,
     };
 }
 
@@ -60,8 +63,8 @@ export function updated<T = string>(data: T): Updated<T> {
     return {
         code: 200,
         data: data,
-        accepted: true,
-        resultLength: dataLength(data),
+        data_length: dataLength(data),
+        success: true,
     };
 }
 
@@ -69,7 +72,7 @@ export function updated<T = string>(data: T): Updated<T> {
  * Create a body for a successful operation.
  */
 export function accepted(): Accepted {
-    return { accepted: true, code: 200 };
+    return { code: 200, success: true, data: undefined };
 }
 
 /**
@@ -93,6 +96,7 @@ export function commonErrorPayload(
         message: errorMessage,
         error: {},
         code: 500,
+        success: false,
         ...more,
     };
 }
@@ -111,12 +115,14 @@ export function objectToErrorObject(
             error: obj,
             code: defaultErrorCode ?? defaultCode,
             data: {},
+            success: false,
         };
     } else if (!obj || typeof obj !== "object") {
         return {
             error: "Internal Server Error",
             code: defaultErrorCode ?? defaultCode,
             data: {},
+            success: false,
         };
     }
 
@@ -151,5 +157,6 @@ export function objectToErrorObject(
         message,
         code,
         data: data ?? obj,
+        success: false,
     };
 }

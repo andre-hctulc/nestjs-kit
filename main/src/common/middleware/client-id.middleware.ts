@@ -22,19 +22,26 @@ export interface ClientIdMiddlewareOptions {
      */
     mode?: "dynamic" | "header" | "cookie";
     /**
+     * Used as request and response header name.
      * @default "X-Client-ID"
      */
     headerName?: string;
     /**
+     * Used as cookie name.
      * @default "client_id"
      */
     cookieName?: string;
     cookieOptions?: Partial<SerializeOptions>;
     /**
-     * Set client id cookie if not present.
+     * Set client id response cookie if not present.
      * @default true
      */
-    setCookies?: boolean;
+    setCookie?: boolean;
+    /**
+     * Set client id response header if not present.
+     * @default true
+     */
+    setHeader?: boolean;
 }
 
 /**
@@ -97,14 +104,16 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
     #cookieName: string;
     #headerName: string;
     #mode: ClientIdMiddlewareOptions["mode"];
-    #setCookies: boolean = true;
+    #setCookie: boolean = true;
+    #setHeader: boolean = true;
 
     constructor(options: ClientIdMiddlewareOptions = {}) {
         this.#cookieOptions = options.cookieOptions || {};
         this.#cookieName = options.cookieName || "client_id";
         this.#headerName = options.headerName || "X-Client-ID";
         this.#mode = options.mode || "dynamic";
-        this.#setCookies = options.setCookies ?? true;
+        this.#setCookie = options.setCookie ?? true;
+        this.#setHeader = options.setHeader ?? true;
     }
 
     use(req: FastifyRequest["raw"], res: FastifyReply["raw"], next: () => void) {
@@ -124,6 +133,13 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
                 (req as any).clientId = clientId;
                 return next();
             }
+            // Set header in response if not present in "header" mode
+            else if (this.#mode === "header" && this.#setHeader) {
+                clientId = randomUUID();
+                res.setHeader(this.#headerName, clientId);
+                (req as any).clientId = clientId;
+                return next();
+            }
         }
 
         // get from cookie
@@ -133,7 +149,7 @@ export abstract class ClientIdMiddleware implements NestMiddleware {
             clientId = cookies[this.#cookieName];
 
             // Set cookie in response if not present
-            if (!clientId && this.#setCookies) {
+            if (!clientId && this.#setCookie) {
                 clientId = randomUUID();
 
                 const setCookie = serialize(this.#cookieName, clientId, {
