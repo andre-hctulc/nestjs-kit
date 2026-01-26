@@ -1,6 +1,6 @@
 import { UnauthorizedException } from "@nestjs/common";
 import type { PermissionDefinition } from "./permissions.model.js";
-import { hasPermission } from "./permissions.util.js";
+import { hasPermission as hasPerm } from "./permissions.util.js";
 import { AccessDeniedError } from "../errors/common-errors.js";
 
 declare module "fastify" {
@@ -21,7 +21,7 @@ export abstract class APIAccess {
      */
     static confirm<T extends APIAccess>(
         access: unknown,
-        Check: (new (...args: any) => T) | (abstract new (...args: any) => T)
+        Check: (new (...args: any) => T) | (abstract new (...args: any) => T),
     ): T {
         if (!(access instanceof Check)) {
             throw new UnauthorizedException();
@@ -59,13 +59,20 @@ export abstract class APIAccess {
     }
 
     /**
+     * Override this to implement custom logic.
+     */
+    hasPermission(permission: PermissionDefinition): boolean {
+        return hasPerm(this.role, permission);
+    }
+    /**
      * Returns false if the permissions array is empty!
+     * Uses {@link hasPermission} internally.
      */
     hasPermissions(...permissions: PermissionDefinition[]): boolean {
         if (!permissions?.length) {
             return false;
         }
-        return permissions.every((p) => hasPermission(this.role, p));
+        return permissions.every((p) => this.hasPermission(p));
     }
 
     /**
