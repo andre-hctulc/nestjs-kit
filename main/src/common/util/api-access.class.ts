@@ -59,7 +59,7 @@ export abstract class APIAccess {
     }
 
     /**
-     * Override this to implement custom logic.
+     * Override to implement custom logic.
      */
     hasPermission(permission: PermissionDefinition): boolean {
         return hasPerm(this.role, permission);

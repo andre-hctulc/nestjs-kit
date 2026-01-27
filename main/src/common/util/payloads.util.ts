@@ -5,32 +5,44 @@ export interface CommonPayload<T = any> {
     data: T;
     code?: string | number;
     message?: string;
-    data_length?: number;
+    length?: number;
     success?: boolean;
     size?: number;
     [key: string]: any;
 }
 
-export interface Accepted extends CommonPayload<undefined> {
+export interface AcceptedPayload extends CommonPayload<undefined> {
     code: 200;
 }
 
 /**
  * Successful creation operation response.
  */
-export interface Created<T = string> extends CommonPayload<T> {
+export interface CreatedPayload<T = string> extends CommonPayload<T> {
     code: 201;
 }
 
 /**
  * Successful update operation response.
  */
-export interface Updated<T = string> extends CommonPayload<T> {
+export interface UpdatedPayload<T = string> extends CommonPayload<T> {
     code: 200;
 }
 
 export interface CommonErrorObject extends CommonPayload {
     error: any;
+}
+
+export type CommonErrorPayload = CommonErrorObject;
+
+export interface PagedPayload<T = any> extends CommonPayload<T[]> {
+    page_index?: number;
+    next_page?: any;
+}
+
+export interface TruncatedPayload<T = any> extends CommonPayload<T[]> {
+    next_token?: any;
+    is_truncated?: boolean;
 }
 
 const dataLength = (result: unknown): number => {
@@ -46,7 +58,7 @@ const dataLength = (result: unknown): number => {
 /**
  * Create a body for a successful creation operation.
  */
-export function created<T = string>(created: T): Created<T> {
+export function createdPayload<T = string>(created: T): CreatedPayload<T> {
     return {
         code: 201,
         data: created,
@@ -59,7 +71,7 @@ export function created<T = string>(created: T): Created<T> {
 /**
  * Create a body for a successful update operation.
  */
-export function updated<T = string>(data: T): Updated<T> {
+export function updatedPayload<T = string>(data: T): UpdatedPayload<T> {
     return {
         code: 200,
         data: data,
@@ -71,7 +83,7 @@ export function updated<T = string>(data: T): Updated<T> {
 /**
  * Create a body for a successful operation.
  */
-export function accepted(): Accepted {
+export function acceptedPayload(): AcceptedPayload {
     return { code: 200, success: true, data: undefined };
 }
 
@@ -87,16 +99,57 @@ export function commonPayload<T>(data: T, more?: Partial<CommonPayload>): Common
     };
 }
 
+/**
+ * Create a body for a paged response.
+ */
+export function pagedPayload<T>(
+    data: T[],
+    page_index?: number,
+    next_page?: any,
+    more?: Partial<PagedPayload<T>>,
+): PagedPayload<T> {
+    return {
+        data,
+        code: 200,
+        data_length: dataLength(data),
+        page_index,
+        next_page,
+        ...more,
+    };
+}
+
+/**
+ * Create a body for a truncated response.
+ */
+export function truncatedPayload<T>(
+    data: T[],
+    is_truncated?: boolean,
+    next_token?: any,
+    more?: Partial<TruncatedPayload<T>>,
+): TruncatedPayload<T> {
+    return {
+        data,
+        code: 200,
+        data_length: dataLength(data),
+        is_truncated,
+        next_token,
+        ...more,
+    };
+}
+
+/**
+ * Create a body for an error response.
+ */
 export function commonErrorPayload(
     errorMessage: string,
-    more?: Partial<CommonErrorObject>
+    more?: Partial<CommonErrorObject>,
 ): CommonErrorObject {
     return {
         data: undefined,
         message: errorMessage,
-        error: {},
-        code: 500,
+        error: true,
         success: false,
+        code: 500,
         ...more,
     };
 }
@@ -107,7 +160,7 @@ export function commonErrorPayload(
  */
 export function objectToErrorObject(
     obj: object | string,
-    defaultErrorCode?: string | number
+    defaultErrorCode?: string | number,
 ): CommonErrorObject {
     const defaultCode = -1;
     if (typeof obj === "string") {
