@@ -1,6 +1,6 @@
 {
     "name": "@dre44/nestjs-kit-client",
-    "version": "0.2.1",
+    "version": "0.2.3",
     "description": "nestjs-kit Client",
     "type": "module",
     "exports": {

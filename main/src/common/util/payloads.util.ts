@@ -11,7 +11,7 @@ export interface CommonPayload<T = any> {
     [key: string]: any;
 }
 
-export interface AcceptedPayload extends CommonPayload<undefined> {
+export interface AcceptedPayload<T = undefined> extends CommonPayload<T> {
     code: 200;
 }
 
@@ -58,12 +58,14 @@ const dataLength = (result: unknown): number => {
 /**
  * Create a body for a successful creation operation.
  */
-export function createdPayload<T = string>(created: T): CreatedPayload<T> {
+export function createdPayload<T>(
+    data: T,
+    more?: Partial<Omit<CreatedPayload<T>, "code" | "success" | "data">>,
+): CreatedPayload<T> {
     return {
+        ...more,
         code: 201,
-        data: created,
-        accepted: true,
-        resultLength: dataLength(created),
+        data: data,
         success: true,
     };
 }
@@ -71,11 +73,13 @@ export function createdPayload<T = string>(created: T): CreatedPayload<T> {
 /**
  * Create a body for a successful update operation.
  */
-export function updatedPayload<T = string>(data: T): UpdatedPayload<T> {
+export function updatedPayload<T>(
+    more?: Partial<Omit<UpdatedPayload<T>, "code" | "success">>,
+): UpdatedPayload<T> {
     return {
+        data: undefined as T,
+        ...more,
         code: 200,
-        data: data,
-        data_length: dataLength(data),
         success: true,
     };
 }
@@ -83,8 +87,10 @@ export function updatedPayload<T = string>(data: T): UpdatedPayload<T> {
 /**
  * Create a body for a successful operation.
  */
-export function acceptedPayload(): AcceptedPayload {
-    return { code: 200, success: true, data: undefined };
+export function acceptedPayload<T>(
+    more?: Partial<Omit<CommonPayload<T>, "code" | "success">>,
+): AcceptedPayload<T> {
+    return { data: undefined as T, ...more, code: 200, success: true };
 }
 
 /**
@@ -94,7 +100,6 @@ export function commonPayload<T>(data: T, more?: Partial<CommonPayload>): Common
     return {
         data,
         code: 200,
-        data_length: dataLength(data),
         ...more,
     };
 }
@@ -106,15 +111,15 @@ export function pagedPayload<T>(
     data: T[],
     page_index?: number,
     next_page?: any,
-    more?: Partial<PagedPayload<T>>,
+    more?: Partial<Omit<PagedPayload<T>, "page_index" | "next_page" | "data">>,
 ): PagedPayload<T> {
     return {
-        data,
         code: 200,
-        data_length: dataLength(data),
+        length: dataLength(data),
+        ...more,
         page_index,
         next_page,
-        ...more,
+        data,
     };
 }
 
@@ -125,32 +130,32 @@ export function truncatedPayload<T>(
     data: T[],
     is_truncated?: boolean,
     next_token?: any,
-    more?: Partial<TruncatedPayload<T>>,
+    more?: Partial<Omit<TruncatedPayload<T>, "is_truncated" | "next_token" | "data">>,
 ): TruncatedPayload<T> {
     return {
-        data,
         code: 200,
-        data_length: dataLength(data),
+        length: dataLength(data),
+        ...more,
         is_truncated,
         next_token,
-        ...more,
+        data,
     };
 }
 
 /**
  * Create a body for an error response.
  */
-export function commonErrorPayload(
+export function commonErrorPayload<T>(
     errorMessage: string,
-    more?: Partial<CommonErrorObject>,
-): CommonErrorObject {
+    more?: Partial<CommonErrorPayload>,
+): CommonErrorPayload {
     return {
         data: undefined,
-        message: errorMessage,
         error: true,
         success: false,
         code: 500,
         ...more,
+        message: errorMessage,
     };
 }
 
