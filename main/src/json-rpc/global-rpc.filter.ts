@@ -1,12 +1,7 @@
 import { Catch, type ArgumentsHost, type RpcExceptionFilter } from "@nestjs/common";
 import { Observable, throwError } from "rxjs";
-import {
-    GlobalExceptionFilterBase,
-    type GlobalExceptionFilterConfig,
-} from "../common/filters/global-exception-filter-base.filter.js";
+import { GlobalExceptionFilterBase } from "../common/filters/global-exception-filter-base.filter.js";
 import type { CommonErrorObject } from "../common/index.js";
-
-export interface GlobalRpcExceptionFilterConfig extends GlobalExceptionFilterConfig {}
 
 /**
  * Catches all errors and sends them (as received) to the client as an observable error.
@@ -17,18 +12,14 @@ export class GlobalRpcExceptionFilter
     extends GlobalExceptionFilterBase<Observable<any>>
     implements RpcExceptionFilter
 {
-    #config: GlobalRpcExceptionFilterConfig;
-
-    constructor(config: GlobalRpcExceptionFilterConfig = {}) {
-        super(config);
-        this.#config = config || {};
+    constructor() {
+        super();
     }
 
     protected override sendError(
         exception: unknown,
         error: CommonErrorObject,
-        mappedException: unknown,
-        host: ArgumentsHost
+        host: ArgumentsHost,
     ): Observable<any> {
         return throwError(() => exception);
     }

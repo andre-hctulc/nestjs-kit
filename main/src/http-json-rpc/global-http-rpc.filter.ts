@@ -1,57 +1,33 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException } from "@nestjs/common";
-import type { CommonErrorObject, ErrorResponseEnhance } from "../common/index.js";
+import type { CommonErrorObject } from "../common/index.js";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { RpcErrorData, RpcErrorResponse } from "../json-rpc/rpc.model.js";
-import {
-    GlobalExceptionFilterBase,
-    type GlobalExceptionFilterConfig,
-} from "../common/filters/global-exception-filter-base.filter.js";
+import { GlobalExceptionFilterBase } from "../common/filters/global-exception-filter-base.filter.js";
 
 export type JsonRpcErrorMapper = (error: unknown) => RpcErrorData | null | void | undefined;
 
-export interface HttpRpcExceptionFilterConfig extends GlobalExceptionFilterConfig {
-    /**
-     * Exceptions with this status are ignored by the filter.
-     *
-     * @default [401, 403, 422]
-     */
-    transportStatusCodes?: number[];
-    enhanceResponse?: ErrorResponseEnhance;
-}
-
-const TransportHttpErrorCodes: number[] = [/* 400, */ 401, 403, /* 404, */ 422];
+const HTTP_TRANSPORT_ERROR_CODES: number[] = [/* 400, */ 401, 403, /* 404, */ 422];
 
 /**
  * Catches all errors and maps them to JSON-RPC error responses.
  */
 @Catch()
 export class GlobalHttpRpcExceptionFilter extends GlobalExceptionFilterBase<void> implements ExceptionFilter {
-    #config: HttpRpcExceptionFilterConfig;
-    #transportStatusCodes: number[];
-
-    constructor(config: HttpRpcExceptionFilterConfig = {}) {
-        super(config, { defaultErrorCode: -32000 });
-        this.#config = config || {};
-        this.#transportStatusCodes = this.#config.transportStatusCodes || TransportHttpErrorCodes;
+    constructor() {
+        super();
     }
 
     protected override sendError(
         originalException: unknown,
-        mappedException: unknown,
         error: CommonErrorObject,
-        host: ArgumentsHost
+        host: ArgumentsHost,
     ): void {
         const ctx = host.switchToHttp();
         const res = ctx.getResponse<FastifyReply>();
         const req = ctx.getRequest<FastifyRequest>();
         const body: Record<string, any> = req.body || {};
         const reqId = typeof body?.id === "string" ? body?.id : null;
-        const status =
-            mappedException instanceof HttpException
-                ? mappedException.getStatus()
-                : originalException instanceof HttpException
-                ? originalException.getStatus()
-                : 500;
+        const status = originalException instanceof HttpException ? originalException.getStatus() : 500;
 
         let code = Number(error.code ?? status);
         if (isNaN(code)) {
@@ -68,19 +44,9 @@ export class GlobalHttpRpcExceptionFilter extends GlobalExceptionFilterBase<void
             data: error.details || {},
         };
 
-        const { headers } = this.#config.enhanceResponse
-            ? this.#config.enhanceResponse(req, res, originalException)
-            : { headers: {} };
+        const resStatus = HTTP_TRANSPORT_ERROR_CODES.includes(status) ? status : 200;
 
-        Object.entries(headers).forEach(([key, value]) => {
-            if (value !== undefined) {
-                res.header(key, value);
-            }
-        });
-
-        const resStatus = this.#transportStatusCodes.includes(status) ? status : 200;
-
-        res.status(resStatus).send({
+        res.code(resStatus).send({
             jsonrpc: "2.0",
             error: errData,
             id: reqId,

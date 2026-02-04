@@ -1,30 +1,24 @@
-import { type ArgumentsHost, Catch, type ExceptionFilter, type LogLevel } from "@nestjs/common";
+import { type ArgumentsHost, Catch, ConsoleLogger, type ExceptionFilter } from "@nestjs/common";
 import { ZodError } from "zod";
 import type { CommonErrorObject } from "../common/index.js";
-import { defaultLogLevel, log } from "../common/util/logs.util.js";
 import type { RpcErrorData } from "../json-rpc/rpc.model.js";
-
-interface ZodExceptionFilterOptions {
-    /**
-     * "verbose": Log all exceptions
-     *
-     * "error" | "info": Log only unmapped and non rpc errors
-     */
-    logLevel?: LogLevel;
-}
+import { PipeErrorSymbol } from "./zod-system.util.js";
+import type { ZPipe } from "./zod.pipe.js";
 
 /**
- * Zod exception filter that maps ZodErrors to appropriate HTTP, RPC, or WS error responses.
+ * Zod exception filter that exclusively handles ZodErrors thrown by {@link ZPipe}.
  */
 @Catch(ZodError)
-export class ZodExceptionFilter implements ExceptionFilter {
-    #logLevel: LogLevel;
+export class ZodPipeExceptionFilter implements ExceptionFilter {
+    #logger = new ConsoleLogger(ZodPipeExceptionFilter.name);
 
-    constructor(options: ZodExceptionFilterOptions = {}) {
-        this.#logLevel = options.logLevel || defaultLogLevel();
-    }
+    constructor() {}
 
     async catch(exception: ZodError, host: ArgumentsHost) {
+        if (!(PipeErrorSymbol in exception)) {
+            throw exception;
+        }
+
         const ctxType = host.getType();
         const errObj: CommonErrorObject = {
             error: "Param validation failed",
@@ -34,12 +28,12 @@ export class ZodExceptionFilter implements ExceptionFilter {
             code: 400,
         };
 
-        log("debug", this.#logLevel, exception);
+        this.#logger.error(exception);
 
         if (ctxType === "http") {
             const http = host.switchToHttp();
             const res = http.getResponse();
-            res.status(400).json(errObj);
+            res.code(400).json(errObj);
         } else if (ctxType === "rpc") {
             const { RpcException } = await import("@nestjs/microservices");
             throw new RpcException({
