@@ -33,7 +33,7 @@ export class ZodPipeExceptionFilter implements ExceptionFilter {
         if (ctxType === "http") {
             const http = host.switchToHttp();
             const res = http.getResponse();
-            res.code(400).json(errObj);
+            res.code(400).send(errObj);
         } else if (ctxType === "rpc") {
             const { RpcException } = await import("@nestjs/microservices");
             throw new RpcException({
