@@ -1,7 +1,7 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException } from "@nestjs/common";
 import type { CommonErrorObject } from "../common/index.js";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import type { RpcErrorData, RpcErrorResponse } from "../json-rpc/rpc.model.js";
+import type { RpcErrorData, RpcErrorResponse } from "../rpc/rpc.model.js";
 import { GlobalExceptionFilterBase } from "../common/filters/global-exception-filter-base.filter.js";
 
 export type JsonRpcErrorMapper = (error: unknown) => RpcErrorData | null | void | undefined;

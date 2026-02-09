@@ -1,7 +1,7 @@
 import { type ArgumentsHost, Catch, ConsoleLogger, type ExceptionFilter } from "@nestjs/common";
 import { ZodError } from "zod";
 import type { CommonErrorObject } from "../common/index.js";
-import type { RpcErrorData } from "../json-rpc/rpc.model.js";
+import type { RpcErrorData } from "../rpc/rpc.model.js";
 import { PipeErrorSymbol } from "./zod-system.util.js";
 import type { ZPipe } from "./zod.pipe.js";
 
