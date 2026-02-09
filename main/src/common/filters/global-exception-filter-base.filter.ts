@@ -55,7 +55,7 @@ export abstract class GlobalExceptionFilterBase<T> {
     }
 
     #logError(host: ArgumentsHost, exception: unknown, unexpected: boolean): void {
-        const at = `At ${this.at(host)}:`;
+        const at = `at ${this.at(host)}`;
         if (unexpected) {
             this.#logger.error(at, exception);
         } else {

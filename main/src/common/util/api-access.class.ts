@@ -6,20 +6,20 @@ import { AccessDeniedError } from "../errors/common-errors.js";
 declare module "fastify" {
     interface FastifyRequest {
         /**
-         * API access attached to the request.
+         * Api access attached to the request.
          */
-        apiAccess?: APIAccess;
+        apiAccess?: ApiAccess;
     }
 }
 
 /**
- * Base class for API access.
+ * Base class for api access.
  */
-export abstract class APIAccess {
+export abstract class ApiAccess {
     /**
      * @throws UnauthorizedException for mismatches.
      */
-    static confirm<T extends APIAccess>(
+    static confirm<T extends ApiAccess>(
         access: unknown,
         Check: (new (...args: any) => T) | (abstract new (...args: any) => T),
     ): T {

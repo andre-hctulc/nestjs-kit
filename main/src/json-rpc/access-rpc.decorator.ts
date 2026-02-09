@@ -1,25 +1,25 @@
 import { createParamDecorator } from "@nestjs/common";
-import { APIAccess, type APIAccessConstructor } from "../common/index.js";
-import { RpcException } from "@nestjs/microservices";
+import { ApiAccess, type ApiAccessConstructor } from "../common/index.js";
+import { RpcAccessDeniedError } from "./rpc.errors.js";
 
 /**
- * Decorator to confirm API access. Checks `context.apiAccess` against the provided `AccessClass`.
- * @param AccessClass `ApiAccess` classes to confirm against. If multiple classes are provided, access is granted if any match. Defaults to `APIAccess`.
+ * Decorator to confirm api access. Checks `context.apiAccess` against the provided `AccessClass`.
+ * @param AccessClass `ApiAccess` classes to confirm against. If multiple classes are provided, access is granted if any match. Defaults to `ApiAccess`.
  */
 export const AccessRpc = createParamDecorator<
-    APIAccessConstructor | APIAccessConstructor[] | undefined,
-    APIAccess
+    ApiAccessConstructor | ApiAccessConstructor[] | undefined,
+    ApiAccess
 >((AccessClass, ctx) => {
-    const ws = ctx.switchToRpc();
-    const context = ws.getContext();
+    const rpc = ctx.switchToRpc();
+    const context = rpc.getContext();
     const access = context.apiAccess;
 
     if (Array.isArray(AccessClass)) {
-        let someAccess: APIAccess | null = null;
+        let someAccess: ApiAccess | null = null;
 
         for (const Access of AccessClass) {
             try {
-                const confirmedAccess = APIAccess.confirm(access, Access);
+                const confirmedAccess = ApiAccess.confirm(access, Access);
                 if (confirmedAccess) {
                     someAccess = confirmedAccess;
                     break;
@@ -28,11 +28,11 @@ export const AccessRpc = createParamDecorator<
         }
 
         if (!someAccess) {
-            throw new RpcException("Unauthorized");
+            throw new RpcAccessDeniedError();
         }
 
         return someAccess;
     }
 
-    return APIAccess.confirm(access, AccessClass || APIAccess);
+    return ApiAccess.confirm(access, AccessClass || ApiAccess);
 });

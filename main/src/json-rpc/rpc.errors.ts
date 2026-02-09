@@ -13,7 +13,7 @@ export class RpcNotFoundError extends RpcException {
     }
 }
 
-export class BadRequestError extends RpcException {
+export class RpcBadRequestError extends RpcException {
     constructor(message?: string) {
         super({ message: message || "Bad request", code: -32000 } satisfies RpcErrorData);
     }
@@ -22,5 +22,11 @@ export class BadRequestError extends RpcException {
 export class RpcInternalError extends RpcException {
     constructor(message?: string) {
         super({ message: message || "Internal error", code: -32603 } satisfies RpcErrorData);
+    }
+}
+
+export class RpcAccessDeniedError extends RpcException {
+    constructor(message?: string) {
+        super({ message: message || "Access denied", code: -32001 } satisfies RpcErrorData);
     }
 }
