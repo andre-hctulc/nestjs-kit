@@ -10,7 +10,7 @@ import type { ZPipe } from "./zod.pipe.js";
  */
 @Catch(ZodError)
 export class ZodPipeExceptionFilter implements ExceptionFilter {
-    #logger = new ConsoleLogger(ZodPipeExceptionFilter.name);
+    #logger = new ConsoleLogger(this.constructor.name);
 
     constructor() {}
 

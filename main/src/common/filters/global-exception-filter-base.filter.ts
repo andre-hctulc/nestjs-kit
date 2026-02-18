@@ -9,7 +9,7 @@ export type ErrorMapper = (error: unknown) => CommonErrorObject | Error | null |
  */
 @Catch()
 export abstract class GlobalExceptionFilterBase<T> {
-    #logger = new ConsoleLogger(GlobalExceptionFilterBase.name);
+    #logger = new ConsoleLogger(this.constructor.name);
 
     constructor() {}
 

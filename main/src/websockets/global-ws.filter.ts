@@ -8,7 +8,7 @@ import { GlobalExceptionFilterBase } from "../common/filters/global-exception-fi
  * which is sent back to the client via an "error_event" or a custom event name.
  */
 @Catch()
-export abstract class GlobalWsExceptionFilter
+export class GlobalWsExceptionFilter
     extends GlobalExceptionFilterBase<void>
     implements WsExceptionFilter
 {
