@@ -1,5 +1,5 @@
 import type { MultipartFile } from "@fastify/multipart";
-import { z, ZodType } from "zod/v4";
+import { z, ZodType } from "zod";
 import type { ReadMultipartFile } from "./file-parts.decorators.js";
 
 /**

@@ -1,5 +1,5 @@
 import { type ArgumentMetadata, Injectable, type PipeTransform } from "@nestjs/common";
-import { z } from "zod/v4";
+import { ZodType } from "zod";
 import { PipeErrorSymbol } from "./zod-system.util.js";
 
 /* 
@@ -15,22 +15,21 @@ interface ZPipeOptions {
     field?: string | ((data: unknown) => any);
 }
 
-
 /**
  * A pipe that validates the input using a zod schema.
  */
 @Injectable()
-export class ZPipe implements PipeTransform {
+export class ZPipe<T> implements PipeTransform {
     private field: ZPipeOptions["field"];
 
     constructor(
-        private schema: z.ZodSchema,
+        private schema: ZodType<T>,
         { field }: ZPipeOptions = {},
     ) {
         this.field = field ?? "";
     }
 
-    transform(value: any, metadata: ArgumentMetadata) {
+    transform(value: any, metadata: ArgumentMetadata): T {
         let fieldValue = value;
 
         if (this.field) {
