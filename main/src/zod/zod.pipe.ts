@@ -19,7 +19,7 @@ interface ZPipeOptions {
  * A pipe that validates the input using a zod schema.
  */
 @Injectable()
-export class ZPipe<T> implements PipeTransform {
+export class ZPipe<T = unknown> implements PipeTransform {
     private field: ZPipeOptions["field"];
 
     constructor(
