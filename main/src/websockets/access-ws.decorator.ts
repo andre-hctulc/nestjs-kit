@@ -32,7 +32,15 @@ export const AccessWs = createParamDecorator<
             throw new WsException(commonErrorPayload("Unauthorized"));
         }
 
+        if (someAccess.revoked) {
+            throw new WsException(commonErrorPayload("Access denied"));
+        }
+
         return someAccess;
+    }
+
+    if (access?.revoked) {
+        throw new WsException(commonErrorPayload("Access denied"));
     }
 
     return ApiAccess.confirm(access, AccessClass || ApiAccess);

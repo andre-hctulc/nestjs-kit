@@ -39,6 +39,9 @@ export abstract class ApiAccess {
     }
 
     hasAdminPermissions(): boolean {
+        if (this.revoked) {
+            return false;
+        }
         return this.isAdmin() || this.isOwner();
     }
 
@@ -62,6 +65,9 @@ export abstract class ApiAccess {
      * Override to implement custom logic.
      */
     hasPermission(permission: PermissionDefinition): boolean {
+        if (this.revoked) {
+            return false;
+        }
         return hasPerm(this.role, permission);
     }
     /**
@@ -69,6 +75,9 @@ export abstract class ApiAccess {
      * Uses {@link hasPermission} internally.
      */
     hasPermissions(...permissions: PermissionDefinition[]): boolean {
+        if (this.revoked) {
+            return false;
+        }
         if (!permissions?.length) {
             return false;
         }
@@ -79,8 +88,18 @@ export abstract class ApiAccess {
      * @throws `AccessDeniedError` if the user does not have the required permissions.
      */
     requirePermissions(...permissions: PermissionDefinition[]): void {
-        if (!this.hasPermissions(...permissions)) {
+        if (this.revoked || !this.hasPermissions(...permissions)) {
             throw new AccessDeniedError("insufficient permissions");
         }
+    }
+
+    #revoked = false;
+
+    revoke(): void {
+        this.#revoked = true;
+    }
+
+    get revoked(): boolean {
+        return this.#revoked;
     }
 }

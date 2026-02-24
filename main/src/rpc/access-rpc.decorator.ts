@@ -31,7 +31,15 @@ export const AccessRpc = createParamDecorator<
             throw new RpcAccessDeniedError();
         }
 
+        if (someAccess.revoked) {
+            throw new RpcAccessDeniedError();
+        }
+
         return someAccess;
+    }
+
+    if (access?.revoked) {
+        throw new RpcAccessDeniedError();
     }
 
     return ApiAccess.confirm(access, AccessClass || ApiAccess);

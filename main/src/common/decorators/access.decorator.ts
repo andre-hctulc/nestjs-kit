@@ -1,6 +1,7 @@
 import { createParamDecorator, UnauthorizedException } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
 import { ApiAccess } from "../util/api-access.class.js";
+import { AccessDeniedError } from "../errors/common-errors.js";
 
 export type ApiAccessConstructor = abstract new (...args: any) => ApiAccess;
 
@@ -33,8 +34,16 @@ export const Access = createParamDecorator<
             throw new UnauthorizedException();
         }
 
+        if (someAccess.revoked) {
+            throw new AccessDeniedError();
+        }
+
         return someAccess;
     }
 
-    return ApiAccess.confirm(req.apiAccess, AccessClass || ApiAccess);
+    if (access?.revoked) {
+        throw new AccessDeniedError();
+    }
+
+    return ApiAccess.confirm(access, AccessClass || ApiAccess);
 });
