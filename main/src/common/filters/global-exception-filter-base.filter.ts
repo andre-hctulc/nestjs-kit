@@ -59,7 +59,7 @@ export abstract class GlobalExceptionFilterBase<T> {
         if (unexpected) {
             this.#logger.error(at, exception);
         } else {
-            this.#logger.warn(at, exception);
+            this.#logger.verbose(at, exception);
         }
     }
 }

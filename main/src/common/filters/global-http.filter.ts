@@ -35,6 +35,6 @@ export class GlobalHttpExceptionFilter extends GlobalExceptionFilterBase<void> i
             req.url.length > MAX_URL_DISPLAY_LENGTH
                 ? `${req.url.slice(0, MAX_URL_DISPLAY_LENGTH)}...`
                 : req.url;
-        return `HTTP (${req.method.toUpperCase()}) ${urlStr}`;
+        return `(${req.method.toUpperCase()}) ${urlStr}`;
     }
 }
