@@ -2,23 +2,19 @@ import { type ArgumentsHost, Catch, ConsoleLogger, type ExceptionFilter } from "
 import { ZodError } from "zod";
 import type { CommonErrorObject } from "../common/index.js";
 import type { RpcErrorData } from "../rpc/rpc.model.js";
-import { PipeErrorSymbol } from "./zod-system.util.js";
 import type { ZPipe } from "./zod.pipe.js";
+import { ZodPipeError } from "./zod-pipe.error.js";
 
 /**
- * Zod exception filter that exclusively handles ZodErrors thrown by {@link ZPipe}.
+ * Zod exception filter that exclusively handles {@link ZodPipeError}s thrown by {@link ZPipe}.
  */
-@Catch(ZodError)
+@Catch(ZodPipeError)
 export class ZodPipeExceptionFilter implements ExceptionFilter {
     #logger = new ConsoleLogger(this.constructor.name);
 
     constructor() {}
 
     async catch(exception: ZodError, host: ArgumentsHost) {
-        if (!(PipeErrorSymbol in exception)) {
-            throw exception;
-        }
-
         const ctxType = host.getType();
         const errObj: CommonErrorObject = {
             error: "Param validation failed",

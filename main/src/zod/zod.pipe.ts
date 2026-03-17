@@ -1,6 +1,6 @@
 import { type ArgumentMetadata, Injectable, type PipeTransform } from "@nestjs/common";
 import { ZodType } from "zod";
-import { PipeErrorSymbol } from "./zod-system.util.js";
+import { ZodPipeError } from "./zod-pipe.error.js";
 
 /* 
 Use `ZPipe` as name to prevent conflict with zod's `ZodPipe`.
@@ -43,12 +43,7 @@ export class ZPipe<T = unknown> implements PipeTransform {
         const { data, success, error } = this.schema.safeParse(fieldValue);
 
         if (!success) {
-            Object.defineProperty(error, PipeErrorSymbol, {
-                value: true,
-                enumerable: false,
-                writable: false,
-            });
-            throw error;
+            throw new ZodPipeError(error);
         }
 
         return this.field ? value : data;
