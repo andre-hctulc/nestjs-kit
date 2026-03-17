@@ -3,13 +3,13 @@ import { ZodError } from "zod";
 import type { CommonErrorObject } from "../common/index.js";
 import type { RpcErrorData } from "../rpc/rpc.model.js";
 import type { ZPipe } from "./zod.pipe.js";
-import { ZodPipeError } from "./zod-pipe.error.js";
+import { ZPipeError } from "./zod-pipe.error.js";
 
 /**
- * Zod exception filter that exclusively handles {@link ZodPipeError}s thrown by {@link ZPipe}.
+ * Zod exception filter that exclusively handles {@link ZPipeError}s thrown by {@link ZPipe}.
  */
-@Catch(ZodPipeError)
-export class ZodPipeExceptionFilter implements ExceptionFilter {
+@Catch(ZPipeError)
+export class ZPipeExceptionFilter implements ExceptionFilter {
     #logger = new ConsoleLogger(this.constructor.name);
 
     constructor() {}
