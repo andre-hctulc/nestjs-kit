@@ -6,7 +6,7 @@ import { PipeErrorSymbol } from "./zod-system.util.js";
 Use `ZPipe` as name to prevent conflict with zod's `ZodPipe`.
 */
 
-interface ZPipeOptions {
+export interface ZPipeOptions {
     /**
      * Validate only a field.
      *
