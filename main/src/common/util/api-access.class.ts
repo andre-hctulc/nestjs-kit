@@ -1,7 +1,7 @@
 import { UnauthorizedException } from "@nestjs/common";
 import type { PermissionDefinition } from "./permissions.model.js";
 import { hasPermission as hasPerm } from "./permissions.util.js";
-import { AccessDeniedError } from "../errors/common-errors.js";
+import { AccessDeniedError } from "../errors/common.errors.js";
 
 declare module "fastify" {
     interface FastifyRequest {

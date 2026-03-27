@@ -6,7 +6,7 @@ import type { ZPipe } from "./zod.pipe.js";
 import { ZPipeError } from "./zod-pipe.error.js";
 
 /**
- * Zod exception filter that exclusively handles {@link ZPipeError}s thrown by {@link ZPipe}.
+ * Zod exception filter that exclusively handles {@link ZPipeError}s thrown by {@link ZPipe}s.
  */
 @Catch(ZPipeError)
 export class ZPipeExceptionFilter implements ExceptionFilter {

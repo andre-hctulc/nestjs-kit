@@ -1,7 +1,7 @@
 import { createParamDecorator, UnauthorizedException } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
 import { ApiAccess } from "../util/api-access.class.js";
-import { AccessDeniedError } from "../errors/common-errors.js";
+import { AccessDeniedError } from "../errors/common.errors.js";
 
 export type ApiAccessConstructor = abstract new (...args: any) => ApiAccess;
 

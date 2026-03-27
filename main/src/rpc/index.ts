@@ -4,3 +4,4 @@ export * from "./rpc.model.js";
 export * from "./rpc.util.js";
 export * from "./rpc.errors.js";
 export * from "./access-rpc.decorator.js";
+export * from "./rpc-service.error.js";
