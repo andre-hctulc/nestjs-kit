@@ -1,4 +1,4 @@
-import { type ArgumentsHost, Catch, HttpException, ConsoleLogger } from "@nestjs/common";
+import { type ArgumentsHost, Catch, HttpException, Logger } from "@nestjs/common";
 import { objectToErrorObject, type CommonErrorObject } from "../util/payloads.util.js";
 
 export type ErrorMapper = (error: unknown) => CommonErrorObject | Error | null | void | undefined;
@@ -9,7 +9,7 @@ export type ErrorMapper = (error: unknown) => CommonErrorObject | Error | null |
  */
 @Catch()
 export abstract class GlobalExceptionFilterBase<T> {
-    #logger = new ConsoleLogger(this.constructor.name);
+    #logger = new Logger(this.constructor.name);
 
     constructor() {}
 

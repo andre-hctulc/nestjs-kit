@@ -1,4 +1,4 @@
-import { type ArgumentsHost, Catch, ConsoleLogger, type ExceptionFilter } from "@nestjs/common";
+import { type ArgumentsHost, Catch, type ExceptionFilter, Logger } from "@nestjs/common";
 import { ZodError } from "zod";
 import type { CommonErrorObject } from "../common/index.js";
 import type { ZPipe } from "./zod.pipe.js";
@@ -9,7 +9,7 @@ import { ZPipeError } from "./zod-pipe.error.js";
  */
 @Catch(ZPipeError)
 export class ZPipeExceptionFilter implements ExceptionFilter {
-    #logger = new ConsoleLogger(this.constructor.name);
+    #logger = new Logger(this.constructor.name);
 
     constructor() {}
 
