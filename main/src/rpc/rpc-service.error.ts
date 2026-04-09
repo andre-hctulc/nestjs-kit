@@ -1,4 +1,5 @@
 import { RpcException } from "@nestjs/microservices";
+import type { ServiceError } from "../common/errors/service-error.interface.js";
 
 interface RpcServiceErrorDetails {
     tags: string[];
@@ -11,7 +12,7 @@ export interface RpcServiceErrorOptions {
     cause?: unknown;
 }
 
-export class RpcServiceError extends RpcException {
+export class RpcServiceError extends RpcException implements ServiceError {
     static opts(
         options1?: RpcServiceErrorOptions,
         options2?: RpcServiceErrorOptions,
@@ -25,15 +26,22 @@ export class RpcServiceError extends RpcException {
             code: options2?.code || options1?.code,
         };
     }
+    
     readonly code: string;
+    readonly details: RpcServiceErrorDetails;
 
     constructor(message: string, options: RpcServiceErrorOptions = {}) {
         const code = options.code || "HOST_ERROR";
+        const details: RpcServiceErrorDetails = {
+            tags: [],
+            ...options.details,
+        };
         super({
             message: `${message} (${code})`,
             code,
-            details: options.details,
+            details,
         });
         this.code = code;
+        this.details = details;
     }
 }

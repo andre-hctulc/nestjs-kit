@@ -1,3 +1,8 @@
+export const DEV_MODE =
+    process.env.NODE_ENV === "development" ||
+    process.env.NODE_ENV === "dev" ||
+    process.env.NODE_ENV === "test";
+
 export type Casing = "upper" | "original" | "lower" | "camel" | "pascal" | "kebab" | "header_case";
 
 export function convertCasing(text: string, casing: Casing) {

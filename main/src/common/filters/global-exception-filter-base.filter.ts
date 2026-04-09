@@ -29,7 +29,6 @@ export abstract class GlobalExceptionFilterBase<T> {
             typeof exception.getError === "function"
         ) {
             unexpected = false;
-            // Nestjs WsException
             const message = exception.getError();
             error = objectToErrorObject(message);
         }
@@ -42,14 +41,10 @@ export abstract class GlobalExceptionFilterBase<T> {
         // Generic Error
         else {
             unexpected = true;
-            error = {
-                code: 500,
-                error: "Internal server error",
-                data: {},
-            };
+            error = objectToErrorObject(undefined);
         }
 
-        this.#logError(host, exception, true);
+        this.#logError(host, exception, unexpected);
 
         return this.sendError(originalException, error, host);
     }
@@ -59,7 +54,7 @@ export abstract class GlobalExceptionFilterBase<T> {
         if (unexpected) {
             this.#logger.error(at, exception);
         } else {
-            this.#logger.verbose(at, exception);
+            this.#logger.debug(at, exception);
         }
     }
 }

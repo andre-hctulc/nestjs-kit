@@ -1,6 +1,6 @@
 {
     "name": "@dre44/nestjs-kit",
-    "version": "0.13.7",
+    "version": "0.13.9",
     "description": "Some NestJS utility",
     "main": "dist/index.js",
     "type": "module",
@@ -9,7 +9,7 @@
         "./zod": "./dist/zod/index.js",
         "./fastify-multipart": "./dist/fastify-multipart/index.js",
         "./oauth": "./dist/oauth/index.js",
-        "./websockets": "./dist/websockets/index.js",
+        "./ws": "./dist/ws/index.js",
         "./rpc": "./dist/rpc/index.js",
         "./http-rpc": "./dist/http-rpc/index.js"
     },

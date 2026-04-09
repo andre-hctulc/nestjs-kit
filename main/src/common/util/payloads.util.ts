@@ -1,3 +1,5 @@
+import { error } from "console";
+
 /**
  * Common payload interface.
  */
@@ -29,8 +31,9 @@ export interface UpdatedPayload<T = string> extends CommonPayload<T> {
     code: 200;
 }
 
-export interface CommonErrorObject extends CommonPayload {
-    error: any;
+export interface CommonErrorObject extends Omit<CommonPayload, "data"> {
+    details: Record<string, any>;
+    message: string;
 }
 
 export type CommonErrorPayload = CommonErrorObject;
@@ -150,7 +153,7 @@ export function commonErrorPayload<T>(
     more?: Partial<CommonErrorPayload>,
 ): CommonErrorPayload {
     return {
-        data: undefined,
+        details: {},
         error: true,
         success: false,
         code: 500,
@@ -159,62 +162,29 @@ export function commonErrorPayload<T>(
     };
 }
 
-/**
- * Convert an object or string into a CommonErrorObject.
- * @param defaultErrorCode Default error code if none found in the object. Defaults to -1.
- */
-export function objectToErrorObject(
-    obj: object | string,
-    defaultErrorCode?: string | number,
-): CommonErrorObject {
-    const defaultCode = -1;
+export function objectToErrorObject(obj: any, defaultErrorCode?: string): CommonErrorObject {
+    const defaultCode = "UNKNOWN_ERROR";
+
+    // Message
     if (typeof obj === "string") {
         return {
-            error: obj,
+            details: {},
             code: defaultErrorCode ?? defaultCode,
-            data: {},
-            success: false,
+            message: obj,
         };
-    } else if (!obj || typeof obj !== "object") {
+    }
+    // fallback
+    else if (!obj || typeof obj !== "object") {
         return {
-            error: "Internal Server Error",
+            message: "Internal Server Error",
             code: defaultErrorCode ?? defaultCode,
-            data: {},
-            success: false,
+            details: {},
         };
-    }
-
-    obj = { ...obj };
-    let message: string = "Internal Server Error";
-    let code: string | number = defaultErrorCode ?? defaultCode;
-    let data: any;
-    let error: any;
-
-    if ("error" in obj) {
-        error = obj.error;
-        delete obj.error;
-    }
-
-    if ("message" in obj && typeof obj.message === "string") {
-        message = obj.message;
-        delete obj.message;
-    }
-
-    if ("code" in obj && (typeof obj.code === "number" || typeof obj.code === "string")) {
-        code = obj.code;
-        delete obj.code;
-    }
-
-    if ("data" in obj) {
-        data = obj.data;
-        delete obj.data;
     }
 
     return {
-        error: error ?? {},
-        message,
-        code,
-        data: data ?? obj,
-        success: false,
+        message: typeof obj.message === "string" ? obj.message : undefined,
+        code: typeof obj.code === "string" ? obj.code : (defaultErrorCode ?? defaultCode),
+        details: obj.details && typeof obj.details === "object" ? obj.details : {},
     };
 }

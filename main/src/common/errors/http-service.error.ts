@@ -1,4 +1,5 @@
 import { HttpException } from "@nestjs/common";
+import type { ServiceError } from "./service-error.interface.js";
 
 interface HttpServiceErrorDetails {
     tags: string[];
@@ -12,7 +13,7 @@ export interface HttpServiceErrorOptions {
     description?: string;
 }
 
-export class HttpServiceError extends HttpException {
+export class HttpServiceError extends HttpException implements ServiceError {
     static opts(
         options1?: HttpServiceErrorOptions,
         options2?: HttpServiceErrorOptions,
@@ -27,18 +28,24 @@ export class HttpServiceError extends HttpException {
         };
     }
     readonly code: string;
+    readonly details: HttpServiceErrorDetails;
 
     constructor(message: string, status: number, options: HttpServiceErrorOptions = {}) {
         const code = options.code || "HOST_ERROR";
+        const details: HttpServiceErrorDetails = {
+            tags: [],
+            ...options.details,
+        };
         super(
             {
                 message: `${message} (${code})`,
                 code,
-                details: options.details,
+                details,
             },
             status,
             { cause: options.cause, description: options.description },
         );
         this.code = code;
+        this.details = details;
     }
 }
