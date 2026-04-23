@@ -1,5 +1,6 @@
-import { type ArgumentsHost, Catch, HttpException, Logger } from "@nestjs/common";
+import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException, Logger } from "@nestjs/common";
 import { objectToErrorObject, type CommonErrorObject } from "../util/payloads.util.js";
+import { sendError } from "../util/send-error.util.js";
 
 export type ErrorMapper = (error: unknown) => CommonErrorObject | Error | null | void | undefined;
 
@@ -8,16 +9,22 @@ export type ErrorMapper = (error: unknown) => CommonErrorObject | Error | null |
  * which is sent back to the client via an "error_event" or a custom event name.
  */
 @Catch()
-export abstract class GlobalExceptionFilterBase<T> {
+export abstract class GlobalExceptionFilterBase<T> implements ExceptionFilter {
     #logger = new Logger(this.constructor.name);
 
     constructor() {}
 
-    protected abstract sendError(exception: unknown, errorObj: CommonErrorObject, host: ArgumentsHost): T;
-
     protected abstract at(host: ArgumentsHost): string;
 
-    catch(exception: unknown, host: ArgumentsHost): T {
+    protected sendError(
+        host: ArgumentsHost,
+        error: CommonErrorObject,
+        originalException: unknown,
+    ): Promise<T> {
+        return sendError(host, error, originalException);
+    }
+
+    async catch(exception: unknown, host: ArgumentsHost) {
         const originalException = exception;
         let error: CommonErrorObject;
         let unexpected: boolean;
@@ -46,7 +53,7 @@ export abstract class GlobalExceptionFilterBase<T> {
 
         this.#logError(host, exception, unexpected);
 
-        return this.sendError(originalException, error, host);
+        return await this.sendError(host, error, originalException);
     }
 
     #logError(host: ArgumentsHost, exception: unknown, unexpected: boolean): void {

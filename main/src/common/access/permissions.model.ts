@@ -3,10 +3,6 @@ export type PermissionDefinition = {
      * Name of the permission
      */
     name: string;
-    /**
-     * Roles that have this permission
-     */
-    roles: string[];
     description?: string;
     /**
      * target id

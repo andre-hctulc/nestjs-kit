@@ -7,3 +7,4 @@ export * from "./filters/index.js";
 export * from "./util/index.js";
 export * from "./middleware/index.js";
 export * from "./errors/index.js";
+export * from "./access/index.js";

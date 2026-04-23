@@ -1,7 +1,7 @@
-import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from "@nestjs/common";
+import { Catch, type ArgumentsHost, type ExceptionFilter } from "@nestjs/common";
 import { GlobalExceptionFilterBase } from "./global-exception-filter-base.filter.js";
 import type { CommonErrorObject } from "../util/payloads.util.js";
-import type { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyRequest } from "fastify";
 
 /**
  * Catches all errors and maps them to a {@link CommonErrorObject}
@@ -11,20 +11,6 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 export class GlobalHttpExceptionFilter extends GlobalExceptionFilterBase<void> implements ExceptionFilter {
     constructor() {
         super();
-    }
-
-    sendError(exception: unknown, error: CommonErrorObject, host: ArgumentsHost) {
-        const ctx = host.switchToHttp();
-        const res: FastifyReply = ctx.getResponse();
-        const req: FastifyRequest = ctx.getRequest();
-
-        const status = exception instanceof HttpException ? exception.getStatus() : 500;
-
-        if (error.code == null || error.code === "" || error.code === -1) {
-            error.code = status;
-        }
-
-        return res.code(status).send(error);
     }
 
     protected at(host: ArgumentsHost): string {

@@ -4,24 +4,10 @@ import { type CommonErrorObject } from "../common/index.js";
 import { GlobalExceptionFilterBase } from "../common/filters/global-exception-filter-base.filter.js";
 
 /**
- * Catches all errors and maps them to a {@link CommonErrorObject}
- * which is sent back to the client via an "error_event" or a custom event name.
+ * Catch all errors, map them to a {@link CommonErrorObject}s and send to client.
  */
 @Catch()
-export class GlobalWsExceptionFilter
-    extends GlobalExceptionFilterBase<void>
-    implements WsExceptionFilter
-{
-    constructor() {
-        super();
-    }
-
-    protected override sendError(exception: unknown, error: CommonErrorObject, host: ArgumentsHost): void {
-        const ctx = host.switchToWs();
-        const client = ctx.getClient<Socket>();
-        client.emit("error_event", error);
-    }
-
+export class GlobalWsExceptionFilter extends GlobalExceptionFilterBase<void> implements WsExceptionFilter {
     protected override at(host: ArgumentsHost): string {
         const ctx = host.switchToWs();
         const client = ctx.getClient<Socket>();

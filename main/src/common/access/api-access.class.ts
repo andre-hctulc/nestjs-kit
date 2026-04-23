@@ -1,7 +1,6 @@
 import { UnauthorizedException } from "@nestjs/common";
 import type { PermissionDefinition } from "./permissions.model.js";
-import { hasPermission as hasPerm } from "./permissions.util.js";
-import { AccessDeniedError } from "../errors/common.errors.js";
+import { AccessDeniedError } from "./access-denied.error.js";
 
 declare module "fastify" {
     interface FastifyRequest {
@@ -10,6 +9,11 @@ declare module "fastify" {
          */
         apiAccess?: ApiAccess;
     }
+}
+
+interface ApiAccessOptions {
+    role?: string;
+    permissions?: PermissionDefinition[];
 }
 
 /**
@@ -30,12 +34,12 @@ export abstract class ApiAccess {
     }
 
     readonly api_access = true;
-    readonly role: string = "";
+    readonly role: string;
+    #permissions: PermissionDefinition[];
 
-    constructor(role?: string) {
-        if (role) {
-            this.role = role;
-        }
+    constructor(options: ApiAccessOptions = {}) {
+        this.role = options.role || "";
+        this.#permissions = options.permissions || [];
     }
 
     hasAdminPermissions(): boolean {
@@ -64,17 +68,18 @@ export abstract class ApiAccess {
     /**
      * Override to implement custom logic.
      */
-    hasPermission(permission: PermissionDefinition): boolean {
+    hasPermission(permission: PermissionDefinition | string): boolean {
         if (this.revoked) {
             return false;
         }
-        return hasPerm(this.role, permission);
+        const permName = typeof permission === "string" ? permission : permission.name;
+        return this.#permissions.some((p) => p.name === permName);
     }
     /**
      * Returns false if the permissions array is empty!
      * Uses {@link hasPermission} internally.
      */
-    hasPermissions(...permissions: PermissionDefinition[]): boolean {
+    hasPermissions(...permissions: (PermissionDefinition | string)[]): boolean {
         if (this.revoked) {
             return false;
         }
@@ -87,9 +92,9 @@ export abstract class ApiAccess {
     /**
      * @throws `AccessDeniedError` if the user does not have the required permissions.
      */
-    requirePermissions(...permissions: PermissionDefinition[]): void {
+    requirePermissions(...permissions: (PermissionDefinition | string)[]): void {
         if (this.revoked || !this.hasPermissions(...permissions)) {
-            throw new AccessDeniedError("insufficient permissions");
+            throw new AccessDeniedError("Insufficient permissions");
         }
     }
 
@@ -101,5 +106,9 @@ export abstract class ApiAccess {
 
     get revoked(): boolean {
         return this.#revoked;
+    }
+
+    getPermissions(): PermissionDefinition[] {
+        return [...this.#permissions];
     }
 }

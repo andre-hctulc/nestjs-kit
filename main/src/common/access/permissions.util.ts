@@ -50,15 +50,3 @@ export function getPermission(permissionName: string): PermissionDefinition | un
 export function getAllPermissions(): PermissionSet {
     return Object.fromEntries(allPermissions.entries());
 }
-
-/**
- * Checks if the given role has the specified permission.
- */
-export function hasPermission(role: string, permission: PermissionDefinition) {
-    if (!(PermissionSetSymbol in permission)) {
-        throw new Error(
-            "Permission definition not mounted properly. Use `definePermissionSet` to define permission sets."
-        );
-    }
-    return permission?.roles.includes(role);
-}

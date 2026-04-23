@@ -1,4 +1,4 @@
-import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException } from "@nestjs/common";
+import { type ArgumentsHost, Catch, HttpException } from "@nestjs/common";
 import type { CommonErrorObject } from "../common/index.js";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { RpcErrorData, RpcErrorResponse } from "../rpc/rpc.model.js";
@@ -9,19 +9,15 @@ export type JsonRpcErrorMapper = (error: unknown) => RpcErrorData | null | void 
 const HTTP_TRANSPORT_ERROR_CODES: number[] = [/* 400, */ 401, 403, /* 404, */ 422];
 
 /**
- * Catches all errors and maps them to JSON-RPC error responses.
+ * Catch all errors and map them to JSON-RPC error responses.
  */
 @Catch()
-export class GlobalHttpRpcExceptionFilter extends GlobalExceptionFilterBase<void> implements ExceptionFilter {
-    constructor() {
-        super();
-    }
-
-    protected override sendError(
-        originalException: unknown,
-        error: CommonErrorObject,
+export class GlobalHttpRpcExceptionFilter extends GlobalExceptionFilterBase<void> {
+    protected override async sendError(
         host: ArgumentsHost,
-    ): void {
+        error: CommonErrorObject,
+        originalException: unknown,
+    ) {
         const ctx = host.switchToHttp();
         const res = ctx.getResponse<FastifyReply>();
         const req = ctx.getRequest<FastifyRequest>();

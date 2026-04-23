@@ -1,6 +1,6 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, Logger } from "@nestjs/common";
 import { ZodError } from "zod";
-import type { CommonErrorObject } from "../common/index.js";
+import { sendError, type CommonErrorObject } from "../common/index.js";
 import type { ZPipe } from "./zod.pipe.js";
 import { ZPipeError } from "./zod-pipe.error.js";
 
@@ -11,10 +11,7 @@ import { ZPipeError } from "./zod-pipe.error.js";
 export class ZPipeExceptionFilter implements ExceptionFilter {
     #logger = new Logger(this.constructor.name);
 
-    constructor() {}
-
     async catch(exception: ZodError, host: ArgumentsHost) {
-        const ctxType = host.getType();
         const errObj: CommonErrorObject = {
             message: "Param validation failed",
             details: {
@@ -23,18 +20,8 @@ export class ZPipeExceptionFilter implements ExceptionFilter {
             code: "PARAM_VALIDATION_FAILED",
         };
 
-        this.#logger.error(exception);
+        this.#logger.debug(exception);
 
-        if (ctxType === "http") {
-            const http = host.switchToHttp();
-            const res = http.getResponse();
-            res.code(400).send(errObj);
-        } else if (ctxType === "rpc") {
-            const { RpcException } = await import("@nestjs/microservices");
-            throw new RpcException(errObj);
-        } else {
-            const { WsException } = await import("@nestjs/websockets");
-            throw new WsException(errObj);
-        }
+        return await sendError(host, errObj, exception);
     }
 }
