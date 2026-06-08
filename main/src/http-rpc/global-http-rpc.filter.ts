@@ -8,9 +8,6 @@ export type JsonRpcErrorMapper = (error: unknown) => RpcErrorData | null | void 
 
 const HTTP_TRANSPORT_ERROR_CODES: number[] = [/* 400, */ 401, 403, /* 404, */ 422];
 
-/**
- * Catch all errors and map them to JSON-RPC error responses.
- */
 @Catch()
 export class GlobalHttpRpcExceptionFilter extends GlobalExceptionFilterBase<void> {
     protected override async sendError(

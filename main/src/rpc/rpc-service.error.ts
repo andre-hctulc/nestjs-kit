@@ -37,7 +37,7 @@ export class RpcServiceError extends RpcException implements ServiceError {
             ...options.details,
         };
         super({
-            message: `${message} (${code})`,
+            message,
             code,
             details,
         });

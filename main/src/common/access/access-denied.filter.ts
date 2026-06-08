@@ -1,13 +1,13 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, Logger } from "@nestjs/common";
 import { type CommonErrorObject } from "../util/payloads.util.js";
 import { AccessDeniedError } from "./access-denied.error.js";
-import type { FastifyReply } from "fastify";
+import { sendError } from "../util/send-error.util.js";
 
 @Catch(AccessDeniedError)
-export abstract class AccessDeniedExceptionFilter implements ExceptionFilter<AccessDeniedError> {
+export class AccessDeniedExceptionFilter implements ExceptionFilter<AccessDeniedError> {
     #logger = new Logger(this.constructor.name);
 
-    catch(exception: AccessDeniedError, host: ArgumentsHost) {
+    async catch(exception: AccessDeniedError, host: ArgumentsHost) {
         const contextType = host.getType();
 
         this.#logger.debug(`Access denied (${contextType})`, exception);
@@ -18,17 +18,6 @@ export abstract class AccessDeniedExceptionFilter implements ExceptionFilter<Acc
             code: "ACCESS_DENIED",
         };
 
-        switch (contextType) {
-            case "http": {
-                const http = host.switchToHttp();
-                const res = http.getResponse<FastifyReply>();
-                res.status(403).send(errorObj);
-                break;
-            }
-            case "rpc":
-            case "ws":
-            default:
-                return errorObj;
-        }
+        return await sendError(host, errorObj, exception);
     }
 }

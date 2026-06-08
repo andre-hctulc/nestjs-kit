@@ -34,7 +34,7 @@ export class WsServiceError extends WsException implements ServiceError {
             ...options.details,
         };
         super({
-            message: `${message} (${code})`,
+            message,
             code,
             details,
         });

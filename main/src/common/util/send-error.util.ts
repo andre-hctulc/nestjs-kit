@@ -15,6 +15,7 @@ export async function sendError(host: ArgumentsHost, resObj: any, originalError:
             const rxjs = await import("rxjs");
             return rxjs.throwError(() => resObj);
         case "ws":
+            // TODO: this is a very naive implementation, we should ideally have some way to specify the event name to emit on
             const ws = host.switchToWs();
             const client = ws.getClient();
             client.emit("error", resObj);

@@ -6,7 +6,6 @@ export type ErrorMapper = (error: unknown) => CommonErrorObject | Error | null |
 
 /**
  * Catches all errors and maps them to a {@link CommonErrorObject}
- * which is sent back to the client via an "error_event" or a custom event name.
  */
 @Catch()
 export abstract class GlobalExceptionFilterBase<T> implements ExceptionFilter {

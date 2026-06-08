@@ -38,7 +38,7 @@ export class HttpServiceError extends HttpException implements ServiceError {
         };
         super(
             {
-                message: `${message} (${code})`,
+                message,
                 code,
                 details,
             },
