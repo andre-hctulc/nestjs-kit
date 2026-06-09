@@ -1,40 +1,20 @@
 import { RpcException } from "@nestjs/microservices";
 import type { ServiceError } from "../common/errors/service-error.interface.js";
-
-interface RpcServiceErrorDetails {
-    tags: string[];
-    [key: string]: any;
-}
-
-export interface RpcServiceErrorOptions {
-    details?: Partial<RpcServiceErrorDetails>;
-    code?: string;
-    cause?: unknown;
-}
+import type { ServiceErrorDetails, ServiceErrorOptions } from "../common/index.js";
+import { mergeOptions } from "../common/errors/service-error.util.js";
 
 export class RpcServiceError extends RpcException implements ServiceError {
-    static opts(
-        options1?: RpcServiceErrorOptions,
-        options2?: RpcServiceErrorOptions,
-    ): RpcServiceErrorOptions {
-        return {
-            details: {
-                ...options1?.details,
-                ...options2?.details,
-                tags: [...(options1?.details?.tags || []), ...(options2?.details?.tags || [])],
-            },
-            code: options2?.code || options1?.code,
-        };
-    }
-    
-    readonly code: string;
-    readonly details: RpcServiceErrorDetails;
+    static opts = mergeOptions;
 
-    constructor(message: string, options: RpcServiceErrorOptions = {}) {
+    readonly code: string;
+    readonly details: ServiceErrorDetails;
+    readonly cause: unknown = undefined;
+
+    constructor(message: string, options: ServiceErrorOptions = {}) {
         const code = options.code || "HOST_ERROR";
-        const details: RpcServiceErrorDetails = {
-            tags: [],
+        const details: ServiceErrorDetails = {
             ...options.details,
+            tags: options.details?.tags || [],
         };
         super({
             message,
@@ -43,5 +23,6 @@ export class RpcServiceError extends RpcException implements ServiceError {
         });
         this.code = code;
         this.details = details;
+        this.cause = options.cause;
     }
 }

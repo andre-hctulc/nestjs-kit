@@ -1,35 +1,18 @@
 import { WsException } from "@nestjs/websockets";
 import type { ServiceError } from "../common/errors/service-error.interface.js";
-
-interface WsServiceErrorDetails {
-    tags: string[];
-    [key: string]: any;
-}
-
-export interface WsServiceErrorOptions {
-    details?: Partial<WsServiceErrorDetails>;
-    code?: string;
-    cause?: unknown;
-}
+import type { ServiceErrorDetails, ServiceErrorOptions } from "../common/index.js";
+import { mergeOptions } from "../common/errors/service-error.util.js";
 
 export class WsServiceError extends WsException implements ServiceError {
-    static opts(options1?: WsServiceErrorOptions, options2?: WsServiceErrorOptions): WsServiceErrorOptions {
-        return {
-            details: {
-                ...options1?.details,
-                ...options2?.details,
-                tags: [...(options1?.details?.tags || []), ...(options2?.details?.tags || [])],
-            },
-            code: options2?.code || options1?.code,
-        };
-    }
+    static opts = mergeOptions;
 
     readonly code: string;
-    readonly details: WsServiceErrorDetails;
+    readonly details: ServiceErrorDetails;
+    readonly cause: unknown = undefined;
 
-    constructor(message: string, options: WsServiceErrorOptions = {}) {
+    constructor(message: string, options: ServiceErrorOptions = {}) {
         const code = options.code || "HOST_ERROR";
-        const details: WsServiceErrorDetails = {
+        const details: ServiceErrorDetails = {
             tags: [],
             ...options.details,
         };
