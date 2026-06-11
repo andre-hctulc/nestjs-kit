@@ -1,9 +1,9 @@
 import { RpcException } from "@nestjs/microservices";
-import type { ServiceError } from "../common/errors/service-error.interface.js";
+import type { ServiceErrorShape } from "../common/errors/service-error-shape.interface.js";
 import type { ServiceErrorDetails, ServiceErrorOptions } from "../common/index.js";
-import { mergeOptions } from "../common/errors/service-error.util.js";
+import { mergeOptions, mergeTags } from "../common/errors/service-error.util.js";
 
-export class RpcServiceError extends RpcException implements ServiceError {
+export class RpcServiceError extends RpcException implements ServiceErrorShape {
     static opts = mergeOptions;
 
     readonly code: string;
@@ -14,7 +14,7 @@ export class RpcServiceError extends RpcException implements ServiceError {
         const code = options.code || "HOST_ERROR";
         const details: ServiceErrorDetails = {
             ...options.details,
-            tags: options.details?.tags || [],
+            tags: mergeTags(options),
         };
         super({
             message,

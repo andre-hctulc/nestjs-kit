@@ -1,9 +1,9 @@
 import { WsException } from "@nestjs/websockets";
-import type { ServiceError } from "../common/errors/service-error.interface.js";
+import type { ServiceErrorShape } from "../common/errors/service-error-shape.interface.js";
 import type { ServiceErrorDetails, ServiceErrorOptions } from "../common/index.js";
-import { mergeOptions } from "../common/errors/service-error.util.js";
+import { mergeOptions, mergeTags } from "../common/errors/service-error.util.js";
 
-export class WsServiceError extends WsException implements ServiceError {
+export class WsServiceError extends WsException implements ServiceErrorShape {
     static opts = mergeOptions;
 
     readonly code: string;
@@ -13,8 +13,8 @@ export class WsServiceError extends WsException implements ServiceError {
     constructor(message: string, options: ServiceErrorOptions = {}) {
         const code = options.code || "HOST_ERROR";
         const details: ServiceErrorDetails = {
-            tags: [],
             ...options.details,
+            tags: mergeTags(options),
         };
         super({
             message,

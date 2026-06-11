@@ -11,7 +11,7 @@ declare module "fastify" {
     }
 }
 
-interface ApiAccessOptions {
+export interface ApiAccessOptions {
     role?: string;
     permissions?: PermissionDefinition[];
 }
