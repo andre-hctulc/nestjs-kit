@@ -1,6 +1,6 @@
-import { UnauthorizedException } from "@nestjs/common";
-import type { PermissionDefinition } from "./permissions.model.js";
+import type { PermissionRef, PermissionRefMap } from "./permissions.types.js";
 import { AccessDeniedError } from "./access-denied.error.js";
+import type { ApiAccessConstructor } from "./access.types.js";
 
 declare module "fastify" {
     interface FastifyRequest {
@@ -13,7 +13,7 @@ declare module "fastify" {
 
 export interface ApiAccessOptions {
     role?: string;
-    permissions?: PermissionDefinition[];
+    permissions?: PermissionRef[];
 }
 
 /**
@@ -21,25 +21,59 @@ export interface ApiAccessOptions {
  */
 export abstract class ApiAccess {
     /**
-     * @throws UnauthorizedException for mismatches.
+     * @throws {AccessDeniedError} for mismatches
      */
     static confirm<T extends ApiAccess>(
         access: unknown,
-        Check: (new (...args: any) => T) | (abstract new (...args: any) => T),
+        Check: ApiAccessConstructor<T> | ApiAccessConstructor<T>[],
     ): T {
-        if (!(access instanceof Check)) {
-            throw new UnauthorizedException();
+        if (!access) {
+            throw new AccessDeniedError();
         }
-        return access;
+
+        if (Array.isArray(Check)) {
+            let someAccess: T | null = null;
+
+            for (const Access of Check) {
+                try {
+                    const confirmedAccess = ApiAccess.confirm(access, Access);
+                    if (confirmedAccess) {
+                        someAccess = confirmedAccess;
+                        break;
+                    }
+                } catch (e) {}
+            }
+
+            if (!someAccess) {
+                throw new AccessDeniedError();
+            }
+
+            if (someAccess.revoked) {
+                throw new AccessDeniedError();
+            }
+
+            return someAccess;
+        }
+
+        if (!(access instanceof Check)) {
+            throw new AccessDeniedError();
+        }
+
+        return access as T;
     }
 
     readonly api_access = true;
     readonly role: string;
-    #permissions: PermissionDefinition[];
+    #permissions: PermissionRef[];
+    #map: PermissionRefMap;
 
     constructor(options: ApiAccessOptions = {}) {
         this.role = options.role || "";
         this.#permissions = options.permissions || [];
+        this.#map = this.#permissions.reduce((map, perm) => {
+            map[perm.id] = perm;
+            return map;
+        }, {} as PermissionRefMap);
     }
 
     hasAdminPermissions(): boolean {
@@ -51,7 +85,7 @@ export abstract class ApiAccess {
 
     /**
      * Checks whether the role is `owner`.
-     * Override this to implement custom logic.
+     * Override to implement custom logic.
      */
     isOwner(): boolean {
         return this.role === "owner";
@@ -59,7 +93,7 @@ export abstract class ApiAccess {
 
     /**
      * Checks whether the role is `admin`.
-     * Override this to implement custom logic.
+     * Override to implement custom logic.
      */
     isAdmin(): boolean {
         return this.role === "admin";
@@ -68,32 +102,26 @@ export abstract class ApiAccess {
     /**
      * Override to implement custom logic.
      */
-    hasPermission(permission: PermissionDefinition | string): boolean {
+    hasPermission(permission: PermissionRef | string): boolean {
         if (this.revoked) {
             return false;
         }
-        const permName = typeof permission === "string" ? permission : permission.name;
-        return this.#permissions.some((p) => p.name === permName);
+        const pid = typeof permission === "string" ? permission : permission.id;
+        return !!this.#map[pid];
     }
-    /**
-     * Returns false if the permissions array is empty!
-     * Uses {@link hasPermission} internally.
-     */
-    hasPermissions(...permissions: (PermissionDefinition | string)[]): boolean {
+
+    hasPermissions(permissions: (PermissionRef | string)[]): boolean {
         if (this.revoked) {
-            return false;
-        }
-        if (!permissions?.length) {
             return false;
         }
         return permissions.every((p) => this.hasPermission(p));
     }
 
     /**
-     * @throws `AccessDeniedError` if the user does not have the required permissions.
+     * @throws {AccessDeniedError} if the user does not have the required permissions
      */
-    requirePermissions(...permissions: (PermissionDefinition | string)[]): void {
-        if (this.revoked || !this.hasPermissions(...permissions)) {
+    requirePermissions(permissions: (PermissionRef | string)[]): void {
+        if (this.revoked || !this.hasPermissions(permissions)) {
             throw new AccessDeniedError("Insufficient permissions");
         }
     }
@@ -108,7 +136,7 @@ export abstract class ApiAccess {
         return this.#revoked;
     }
 
-    getPermissions(): PermissionDefinition[] {
+    getPermissions(): PermissionRef[] {
         return [...this.#permissions];
     }
 }
