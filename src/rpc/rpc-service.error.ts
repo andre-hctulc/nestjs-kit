@@ -1,0 +1,28 @@
+import { RpcException } from "@nestjs/microservices";
+import type { ErrorShape } from "../common/errors/error-shape.interface.js";
+import type { ServiceErrorDetails, ServiceErrorOptions } from "../common/index.js";
+import { mergeOptions, mergeTags } from "../common/errors/service-error.util.js";
+
+export class RpcServiceError extends RpcException implements ErrorShape {
+    static opts = mergeOptions;
+
+    readonly code: string;
+    readonly details: ServiceErrorDetails;
+    readonly cause: unknown = undefined;
+
+    constructor(message: string, options: ServiceErrorOptions = {}) {
+        const code = options.code || "HOST_ERROR";
+        const details: ServiceErrorDetails = {
+            ...options.details,
+            tags: mergeTags(options),
+        };
+        super({
+            message,
+            code,
+            details,
+        });
+        this.code = code;
+        this.details = details;
+        this.cause = options.cause;
+    }
+}
