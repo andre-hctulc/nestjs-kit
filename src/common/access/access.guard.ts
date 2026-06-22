@@ -1,51 +1,32 @@
 import type { CanActivate, ExecutionContext } from "@nestjs/common";
-import type { ApiAccessConstructor } from "./access.types.js";
-import { AccessDeniedError, ApiAccess, type PermissionRef } from "../index.js";
+import { ApiAccess, getRequestedPermissions, type ApiAccessConstructor } from "../index.js";
+import type { MaybePromise } from "../util/system/system-types.js";
 
-export interface AccessSpec {
-    type?: ApiAccessConstructor | ApiAccessConstructor[];
-    permissions?: (string | PermissionRef)[];
-    role?: string;
+export interface ValidateAccessContext {
+    requestedPermissions: string[];
+    context: ExecutionContext;
 }
 
-export class AccessGuard implements CanActivate {
-    #role: string | undefined;
-    #permissions: string[];
-    #accessTypes: ApiAccessConstructor[];
+export abstract class AccessGuard<A extends ApiAccess = ApiAccess> implements CanActivate {
+    #type: ApiAccessConstructor<A>;
 
-    constructor(spec: AccessSpec) {
-        this.#role = spec.role;
-        this.#permissions =
-            spec.permissions?.map((perm) => (typeof perm === "string" ? perm : perm.id)) || [];
-        this.#accessTypes = Array.isArray(spec.type) ? spec.type : spec.type ? [spec.type] : [ApiAccess];
-        if (!this.#accessTypes.length) {
-            this.#accessTypes = [ApiAccess];
-        }
+    constructor(type?: ApiAccessConstructor<A>) {
+        this.#type = type ?? (ApiAccess as any);
     }
 
-    canActivate(context: ExecutionContext): boolean {
+    abstract validateAccess(access: A, context: ValidateAccessContext): MaybePromise<boolean>;
+
+    async canActivate(context: ExecutionContext): Promise<boolean> {
         const http = context.switchToHttp();
         const req = http.getRequest();
 
         context.switchToRpc().getContext();
 
-        // validate `type`
-        const apiAccess = ApiAccess.confirm(req.apiAccess, this.#accessTypes);
+        const apiAccess = ApiAccess.confirm(req.apiAccess, this.#type);
 
-        // validate `role`
-        if (this.#role !== undefined) {
-            if (apiAccess.role !== this.#role) {
-                throw new AccessDeniedError();
-            }
-        }
-
-        // validate `permissions`
-        if (this.#permissions.length) {
-            if (!apiAccess.hasPermissions(this.#permissions)) {
-                throw new AccessDeniedError();
-            }
-        }
-
-        return true;
+        return await this.validateAccess(apiAccess, {
+            requestedPermissions: getRequestedPermissions(context),
+            context,
+        });
     }
 }
