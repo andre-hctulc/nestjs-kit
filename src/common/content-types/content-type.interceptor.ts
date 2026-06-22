@@ -12,7 +12,7 @@ import type { FastifyRequest } from "fastify";
 
 @Injectable()
 export class ContentTypeInterceptor implements NestInterceptor {
-    constructor(private readonly reflector: Reflector) {}
+    constructor(private reflector: Reflector) {}
 
     intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
         const allowedTypes = this.reflector.getAllAndOverride<string[]>(ContentType.KEY, [
