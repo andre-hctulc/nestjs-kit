@@ -30,7 +30,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
         if (ServiceError.isServiceError(exception)) {
             unexpected = false;
             error = {
-                code: exception.code,
+                statusCode: exception.statusCode,
                 message: exception.message,
                 details: exception.details,
             };
@@ -44,7 +44,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
             unexpected = false;
             const message = exception.getError();
             error = {
-                code: "UNKNOWN",
+                statusCode: "UNKNOWN",
                 message: String(message),
                 details: null,
             };
@@ -54,7 +54,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
             unexpected = false;
             const message = exception.getResponse();
             error = {
-                code: String(exception.getStatus()),
+                statusCode: String(exception.getStatus()),
                 message: String(message),
                 details: null,
             };
@@ -63,7 +63,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
         else {
             unexpected = true;
             error = {
-                code: "UNKNOWN",
+                statusCode: "UNKNOWN",
                 message: "An unexpected error occurred",
                 details: null,
             };
@@ -88,11 +88,13 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
                         ? `${req.url.slice(0, MAX_URL_DISPLAY_LENGTH)}...`
                         : req.url;
                 at = `(${req.method.toUpperCase()}) ${urlStr}`;
+                break;
             }
             case "ws": {
                 const ctx = host.switchToWs();
                 const client = ctx.getClient();
                 at = `WS [${client.id}]`;
+                break;
             }
             case "rpc": {
                 const ctx = host.switchToRpc();
@@ -119,6 +121,8 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
                 } else {
                     at = "RPC";
                 }
+
+                break;
             }
         }
 

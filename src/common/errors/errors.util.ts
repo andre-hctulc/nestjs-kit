@@ -2,7 +2,7 @@ import { HttpException, type ArgumentsHost } from "@nestjs/common";
 import type { FastifyReply } from "fastify";
 
 export interface SendErrorOptions {
-    httpStatus?: number;
+    httpStatusCode?: number;
 }
 
 /**
@@ -21,7 +21,7 @@ export async function sendError(
             const http = host.switchToHttp();
             const res = http.getResponse<FastifyReply>();
             const status =
-                options?.httpStatus ??
+                options?.httpStatusCode ??
                 (originalError instanceof HttpException ? originalError.getStatus() : 500);
             res.status(status).header("Content-Type", "application/json").send(errorObj);
             break;

@@ -10,7 +10,8 @@
         "./fastify-multipart": "./dist/fastify-multipart/index.js",
         "./ws": "./dist/ws/index.js",
         "./rpc": "./dist/rpc/index.js",
-        "./http-rpc": "./dist/http-rpc/index.js"
+        "./http-rpc": "./dist/http-rpc/index.js",
+        "./interactive": "./dist/interactive/index.js"
     },
     "scripts": {
         "tc": "tsc --noEmit",
@@ -32,11 +33,11 @@
     "license": "ISC",
     "dependencies": {
         "@nestjs/common": "^11.1.12",
+        "commander": "^15.0.0",
         "cookie": "^1.0.2"
     },
     "devDependencies": {
         "@types/busboy": "^1.5.4",
-        "@types/express": "^5.0.1",
         "@types/node": "^22.7.4"
     },
     "peerDependencies": {
@@ -48,6 +49,7 @@
         "openid-client": "^6.5.0",
         "rxjs": "^7.8.2",
         "socket.io": "^4.8.1",
-        "zod": "^4.3.6"
+        "zod": "^4.3.6",
+        "commander": "^15.0.0"
     }
 }

@@ -27,7 +27,7 @@ export class ServiceErrorExceptionFilter {
                 details,
             },
             exception,
-            { httpStatus: details?.httpStatus },
+            { httpStatusCode: details?.httpStatusCode },
         );
     }
 }

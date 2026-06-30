@@ -1,5 +1,5 @@
 export interface ErrorShape {
-    code: string;
+    statusCode: string;
     details: any;
     message: string;
 }

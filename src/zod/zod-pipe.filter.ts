@@ -17,7 +17,7 @@ export class ZPipeExceptionFilter implements ExceptionFilter {
             details: {
                 issues: exception.issues,
             },
-            code: "PARAM_VALIDATION_FAILED",
+            statusCode: "PARAM_VALIDATION_FAILED",
         };
 
         this.#logger.debug(exception);

@@ -4,7 +4,7 @@ export function RequestPermissions(...actionName: string[]) {
     return SetMetadata(RequestPermissions.KEY, actionName);
 }
 
-RequestPermissions.KEY = "access_request_permissions";
+RequestPermissions.KEY = Symbol("nestjs-kit:request-permissions");
 
 export function getRequestedPermissions(context: ExecutionContext): string[] {
     return [

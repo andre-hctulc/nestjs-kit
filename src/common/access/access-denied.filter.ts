@@ -15,9 +15,9 @@ export class AccessDeniedExceptionFilter implements ExceptionFilter<AccessDenied
         const errorObj: ErrorShape = {
             details: {},
             message: exception.message,
-            code: "ACCESS_DENIED",
+            statusCode: "ACCESS_DENIED",
         };
 
-        return await sendError(host, errorObj, exception, { httpStatus: 403 });
+        return await sendError(host, errorObj, exception, { httpStatusCode: 403 });
     }
 }

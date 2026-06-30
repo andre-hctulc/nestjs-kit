@@ -6,7 +6,7 @@ import { mergeOptions, mergeTags } from "../common/errors/service-error.util.js"
 export class WsServiceError extends WsException implements ErrorShape {
     static opts = mergeOptions;
 
-    readonly code: string;
+    readonly statusCode: string;
     readonly details: ServiceErrorDetails;
     readonly cause: unknown = undefined;
 
@@ -21,7 +21,7 @@ export class WsServiceError extends WsException implements ErrorShape {
             code,
             details,
         });
-        this.code = code;
+        this.statusCode = code;
         this.details = details;
     }
 }
