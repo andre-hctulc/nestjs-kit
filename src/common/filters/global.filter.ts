@@ -13,14 +13,6 @@ export type ErrorMapper = (error: unknown) => ErrorShape | Error | null | void |
 export class GlobalExceptionFilter<T> implements ExceptionFilter {
     #logger = new Logger(this.constructor.name);
 
-    /**
-     * Send error logic.
-     * @overridable
-     */
-    protected sendError(host: ArgumentsHost, error: ErrorShape, originalException: unknown): Promise<T> {
-        return sendError(host, error, originalException);
-    }
-
     async catch(exception: unknown, host: ArgumentsHost) {
         const originalException = exception;
         let error: ErrorShape;
@@ -30,7 +22,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
         if (ServiceError.isServiceError(exception)) {
             unexpected = false;
             error = {
-                statusCode: exception.statusCode,
+                code: exception.code,
                 message: exception.message,
                 details: exception.details,
             };
@@ -44,7 +36,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
             unexpected = false;
             const message = exception.getError();
             error = {
-                statusCode: "UNKNOWN",
+                code: "UNKNOWN",
                 message: String(message),
                 details: null,
             };
@@ -52,9 +44,14 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
         // HttpException
         else if (exception instanceof HttpException) {
             unexpected = false;
-            const message = exception.getResponse();
+            
+            let message = exception.getResponse();
+            if (typeof message === "object") {
+                message = String((message as any).message || "");
+            }
+
             error = {
-                statusCode: String(exception.getStatus()),
+                code: String(exception.getStatus()),
                 message: String(message),
                 details: null,
             };
@@ -63,7 +60,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
         else {
             unexpected = true;
             error = {
-                statusCode: "UNKNOWN",
+                code: "UNKNOWN",
                 message: "An unexpected error occurred",
                 details: null,
             };
@@ -71,7 +68,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
 
         this.#logError(host, exception, unexpected);
 
-        return await this.sendError(host, error, originalException);
+        return await sendError(host, error, originalException);
     }
 
     #logError(host: ArgumentsHost, exception: unknown, unexpected: boolean): void {

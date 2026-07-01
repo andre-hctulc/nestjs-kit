@@ -6,7 +6,7 @@ import { mergeOptions, mergeTags } from "./service-error.util.js";
 export class HttpServiceError extends HttpException implements ErrorShape {
     static opts = mergeOptions;
 
-    readonly statusCode: string;
+    readonly code: string;
     readonly details: ServiceErrorDetails;
 
     constructor(message: string, statusCode: number, options: ServiceErrorOptions = {}) {
@@ -25,7 +25,7 @@ export class HttpServiceError extends HttpException implements ErrorShape {
             statusCode,
             { cause: options.cause },
         );
-        this.statusCode = code;
+        this.code = code;
         this.details = details;
     }
 }

@@ -6,7 +6,7 @@ import { mergeOptions, mergeTags } from "../common/errors/service-error.util.js"
 export class RpcServiceError extends RpcException implements ErrorShape {
     static opts = mergeOptions;
 
-    readonly statusCode: string;
+    readonly code: string;
     readonly details: ServiceErrorDetails;
     readonly cause: unknown = undefined;
 
@@ -21,7 +21,7 @@ export class RpcServiceError extends RpcException implements ErrorShape {
             code,
             details,
         });
-        this.statusCode = code;
+        this.code = code;
         this.details = details;
         this.cause = options.cause;
     }

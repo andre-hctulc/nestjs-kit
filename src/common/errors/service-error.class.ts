@@ -5,7 +5,7 @@ import { mergeOptions, mergeTags } from "./service-error.util.js";
 export class ServiceError extends Error implements ErrorShape {
     static opts = mergeOptions;
 
-    readonly statusCode: string;
+    readonly code: string;
     readonly details: ServiceErrorDetails;
     readonly cause: unknown;
 
@@ -16,7 +16,7 @@ export class ServiceError extends Error implements ErrorShape {
             tags: mergeTags(options),
         };
         super(message, { cause: options.cause });
-        this.statusCode = code;
+        this.code = code;
         this.details = details;
         this.cause = options.cause;
     }
