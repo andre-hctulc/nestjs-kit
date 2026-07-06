@@ -4,3 +4,4 @@ export * from "./service-error.types.js";
 export * from "./service-error.class.js";
 export * from "./service-error.filter.js";
 export * from "./errors.util.js";
+export * from "./common-service.errors.js";

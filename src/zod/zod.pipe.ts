@@ -48,4 +48,12 @@ export class ZPipe<T = unknown> implements PipeTransform {
 
         return this.field ? value : data;
     }
+
+    parse<T>(schema: ZodType<T>, value: unknown): T {
+        const { data, success, error } = schema.safeParse(value);
+        if (!success) {
+            throw new ZPipeError(error);
+        }
+        return data;
+    }
 }
