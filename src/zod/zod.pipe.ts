@@ -49,6 +49,9 @@ export class ZPipe<T = unknown> implements PipeTransform {
         return this.field ? value : data;
     }
 
+    /**
+     * Parse a value using the schema, throwing a {@link ZPipeError} if validation fails
+     */
     parse<T>(schema: ZodType<T>, value: unknown): T {
         const { data, success, error } = schema.safeParse(value);
         if (!success) {
