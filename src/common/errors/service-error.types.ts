@@ -1,6 +1,6 @@
 export interface ServiceErrorDetails {
     tags?: string[];
-    httpStatus?: number;
+    httpStatusCode?: number;
     [key: string]: any;
 }
 

@@ -1,6 +1,7 @@
 import { type ArgumentMetadata, Injectable, type PipeTransform } from "@nestjs/common";
 import { ZodType } from "zod";
 import { ZPipeError } from "./zod-pipe.error.js";
+import type { $ZodIssue, ParseContext } from "zod/v4/core";
 
 /* 
 Use `ZPipe` as name to prevent conflict with zod's `ZodPipe`.
@@ -51,9 +52,11 @@ export class ZPipe<T = unknown> implements PipeTransform {
 
     /**
      * Parse a value using the schema, throwing a {@link ZPipeError} if validation fails
+     * 
+     * @throws {ZPipeError}
      */
-    static parse<T>(schema: ZodType<T>, value: unknown): T {
-        const { data, success, error } = schema.safeParse(value);
+    static parse<T>(schema: ZodType<T>, value: unknown, params?: ParseContext<$ZodIssue>): T {
+        const { data, success, error } = schema.safeParse(value, params);
         if (!success) {
             throw new ZPipeError(error);
         }

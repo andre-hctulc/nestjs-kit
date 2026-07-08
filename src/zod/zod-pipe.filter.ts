@@ -1,6 +1,6 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, Logger } from "@nestjs/common";
 import { ZodError } from "zod";
-import { sendError, type ErrorShape } from "../common/index.js";
+import { getErrorLocationDescription, sendError, type ErrorShape } from "../common/index.js";
 import type { ZPipe } from "./zod.pipe.js";
 import { ZPipeError } from "./zod-pipe.error.js";
 
@@ -20,7 +20,8 @@ export class ZPipeExceptionFilter implements ExceptionFilter {
             code: "PARAM_VALIDATION_FAILED",
         };
 
-        this.#logger.debug(exception);
+        const at = getErrorLocationDescription(host);
+        this.#logger.debug(`Param validation failed at ${at}`, exception);
 
         return await sendError(host, errObj, exception);
     }

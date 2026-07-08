@@ -2,7 +2,7 @@ import { ServiceError } from "./service-error.class.js";
 
 export class NotImplementedError extends ServiceError {
     constructor(message?: string) {
-        super(message || "Not Implemented", { code: "NOT_IMPLEMENTED", details: { httpStatus: 501 } });
+        super(message || "Not Implemented", { code: "NOT_IMPLEMENTED", details: { httpStatusCode: 501 } });
     }
 }
 
