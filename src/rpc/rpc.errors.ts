@@ -25,7 +25,7 @@ export class RpcInternalError extends RpcException {
     }
 }
 
-export class RpcAccessDeniedError extends RpcException {
+export class RpcForbiddenError extends RpcException {
     constructor(message?: string) {
         super({ message: message || "Access denied", code: -32001 } satisfies RpcErrorData);
     }

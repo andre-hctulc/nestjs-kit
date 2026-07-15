@@ -19,12 +19,14 @@ export class ServiceErrorExceptionFilter {
             this.#logger.error("Unexpected error", exception);
         }
 
+        const priv = details?.private === true;
+
         return await sendError(
             host,
             {
                 code,
-                message,
-                details,
+                message: priv ? "An unexpected error occurred" : message,
+                details: priv ? {} : details,
             },
             exception,
             { httpStatusCode: details?.httpStatusCode },

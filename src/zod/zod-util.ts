@@ -93,7 +93,7 @@ export function zodCoerceQueryParam<Z extends ZodType>(schema: Z): ZodType<z.inf
 export function zodCoerceQuery<T extends Record<string, ZodType>>(schema: ZodObject<T>): ZodObject<T> {
     const shape = schema.shape;
     if (!shape) {
-        throw new Error("Failed to coerce query: Zod schema has no shape");
+        throw new TypeError("Failed to coerce query: Zod schema has no shape");
     }
     const newShape: Record<string, ZodType<any>> = {};
     for (const key of Object.keys(shape)) {

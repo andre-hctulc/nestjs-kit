@@ -21,11 +21,19 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
         // ServiceError
         if (ServiceError.isServiceError(exception)) {
             unexpected = false;
-            error = {
-                code: exception.code,
-                message: exception.message,
-                details: exception.details,
-            };
+            if (exception.details?.private === true) {
+                error = {
+                    code: exception.code,
+                    message: "An unexpected error occurred",
+                    details: {},
+                };
+            } else {
+                error = {
+                    code: exception.code,
+                    message: exception.message,
+                    details: exception.details,
+                };
+            }
         }
         // WsException/RpcException
         else if (
