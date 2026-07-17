@@ -33,15 +33,15 @@
     "author": "André Thomas",
     "license": "ISC",
     "dependencies": {
-        "@nestjs/common": "^11.1.12",
+        "@nestjs/common": "^11",
         "commander": "^15.0.0",
         "cookie": "^1.0.2"
     },
     "devDependencies": {
         "@fastify/multipart": "^9.4.0",
         "@grpc/grpc-js": "^1.14.4",
-        "@nestjs/microservices": "^11.1.12",
-        "@nestjs/websockets": "^11.1.12",
+        "@nestjs/microservices": "^11",
+        "@nestjs/websockets": "^11",
         "@types/busboy": "^1.5.4",
         "@types/node": "^22.7.4",
         "commander": "^15.0.0",
