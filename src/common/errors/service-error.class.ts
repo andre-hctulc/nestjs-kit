@@ -25,8 +25,8 @@ export class ServiceError extends Error implements ErrorShape {
         return (
             error instanceof Error &&
             typeof (error as any).code === "string" &&
-            typeof (error as any).details === "object" &&
-            (error as any).details !== null
+            ((typeof (error as any).details === "object" && (error as any).details !== null) ||
+                (error as any).details === undefined)
         );
     }
 }
