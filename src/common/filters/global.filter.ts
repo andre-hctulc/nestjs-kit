@@ -46,7 +46,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
             error = {
                 code: "UNKNOWN",
                 message: String(message),
-                details: null,
+                details: {},
             };
         }
         // HttpException
@@ -61,7 +61,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
             error = {
                 code: String(exception.getStatus()),
                 message: String(message),
-                details: null,
+                details: {},
             };
         }
         // Generic Error
@@ -70,7 +70,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
             error = {
                 code: "UNKNOWN",
                 message: "An unexpected error occurred",
-                details: null,
+                details: {},
             };
         }
 
