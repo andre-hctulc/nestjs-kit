@@ -1,8 +1,14 @@
 import type { CustomTransportStrategy } from "@nestjs/microservices";
-import { Server } from "@nestjs/microservices";
+import { Server, Transport } from "@nestjs/microservices";
 import { Logger } from "@nestjs/common";
-import { ConnectError, Code, type ConnectRouter, type HandlerContext } from "@connectrpc/connect";
-import { connectNodeAdapter } from "@connectrpc/connect-node";
+import {
+    ConnectError,
+    Code,
+    type ConnectRouter,
+    type HandlerContext,
+    type Interceptor,
+} from "@connectrpc/connect";
+import { connectNodeAdapter, type ConnectNodeAdapterOptions } from "@connectrpc/connect-node";
 import {
     fromJson,
     type DescField,
@@ -12,64 +18,57 @@ import {
 } from "@bufbuild/protobuf";
 import { StructSchema } from "@bufbuild/protobuf/wkt";
 import http2, { type ServerOptions } from "node:http2";
-import { isObservable, firstValueFrom } from "rxjs";
-import {
-    capTimeout,
-    normalizeTimeout,
-    TimeoutController,
-    type CallTimeouts,
-} from "../common/util/system/timeout.util.js";
+import { isObservable } from "rxjs";
 import { isAsyncIterable } from "../rpc/rpc.util.js";
 import { unwrapBySchema, wrapBySchema } from "./value.util.js";
-
-/** 5min in milliseconds */
-const MAX_UNARY_TIMEOUT = 300_000;
-
-/** 10min in milliseconds */
-const MAX_STREAM_TIMEOUT = 600_000;
-
-interface ConnectTimeoutOptions {
-    /** Default timeout for unary calls in milliseconds */
-    defaultUnaryTimeout?: number;
-    /**
-     * Maximum timeout for unary calls in milliseconds
-     * @default 5min
-     */
-    maxUnaryTimeout?: number;
-    /** Default timeout for stream calls in milliseconds */
-    defaultStreamTimeout?: number;
-    /**
-     * Maximum timeout for stream calls in milliseconds
-     * @default 10min
-     */
-    maxStreamTimeout?: number;
-}
+import {
+    firstValueFromObservable,
+    raceWithSignal,
+    resolveFinalTimeout,
+} from "../common/util/system/system.util.js";
+import { getConnectClientDeadline } from "./connect.util.js";
 
 interface ConnectRpcServerOptions {
     address?: string;
     services?: DescService[];
-    timeouts?: ConnectTimeoutOptions;
+    timeout?: number;
+    maxTimeout?: number;
     serverOptions?: ServerOptions;
+    adapterOptions?: Partial<ConnectNodeAdapterOptions>;
 }
 
-type ConnectServerEventMap = {
-    listening: (address: string) => void;
-    error: (error: unknown) => void;
-    close: () => void;
-};
-
-type ConnectServerEventType = string & keyof ConnectServerEventMap;
 type MessageHandler = (...args: any[]) => any;
 
+/** 2min in milliseconds */
+const DEFAULT_TIMEOUT = 120_000;
+
+/** Maximum connect call deadline in milliseconds (24 hours) */
+const MAX_TIMEOUT = 24 * 60 * 60 * 1000;
+
+const createServerTimeoutInterceptor: (timeout: number, maxTimeout: number) => Interceptor = (
+    timeout: number,
+    maxTimeout: number,
+) => {
+    return (next) => async (req) => {
+        const clientDeadline = getConnectClientDeadline(req.header);
+        const finalTimeout = resolveFinalTimeout(clientDeadline, timeout, maxTimeout);
+        const serverSignal = AbortSignal.timeout(finalTimeout);
+        const combined = req.signal ? AbortSignal.any([req.signal, serverSignal]) : serverSignal;
+        return next({ ...req, signal: combined });
+    };
+};
+
 export class ConnectRpcServer
-    extends Server<ConnectServerEventMap, string>
+    extends Server<Record<string, (...args: any[]) => any>, string>
     implements CustomTransportStrategy
 {
     #logger = new Logger(ConnectRpcServer.name);
+
+    override readonly transportId = Transport.GRPC;
+
     #options: ConnectRpcServerOptions;
     #address: string;
-    #server: http2.Http2Server | null = null;
-    #eventListeners: Map<ConnectServerEventType, Set<(...args: any[]) => any>> = new Map();
+    #server: http2.Http2Server | undefined;
 
     constructor(options: ConnectRpcServerOptions = {}) {
         super();
@@ -83,35 +82,36 @@ export class ConnectRpcServer
 
     async listen(callback: () => void) {
         try {
+            const interceptor = createServerTimeoutInterceptor(
+                this.#options.timeout ?? DEFAULT_TIMEOUT,
+                this.#options.maxTimeout ?? MAX_TIMEOUT,
+            );
             const handler = connectNodeAdapter({
+                ...this.#options.adapterOptions,
                 routes: (router) => this.#registerServices(router),
+                interceptors: [interceptor, ...(this.#options.adapterOptions?.interceptors ?? [])],
             });
 
             const [host, portStr] = this.#address.split(":");
             const port = parseInt(portStr, 10);
 
             await new Promise<void>((resolve, reject) => {
-                this.#server = http2.createServer(this.#options.serverOptions || {}, handler as any);
+                this.#server = http2.createServer(this.#options.serverOptions || {}, handler);
                 this.#server.once("error", (err) => {
-                    this.#dispatchEvent("error", err);
                     reject(err);
                 });
                 this.#server.listen(port, host, resolve);
             });
         } catch (err) {
-            this.#dispatchEvent("error", err);
             throw err;
         }
 
         callback();
-        this.#dispatchEvent("listening", this.#address);
     }
 
     close() {
         this.#server?.close();
-        this.#server = null;
-        this.#dispatchEvent("close");
-        this.#eventListeners.clear();
+        this.#server = undefined;
     }
 
     #registerServices(router: ConnectRouter) {
@@ -149,26 +149,24 @@ export class ConnectRpcServer
         if (responseStream) {
             const self = this;
             return async function* (req: any, ctx: HandlerContext): AsyncGenerator<any> {
-                const timeoutController = new TimeoutController(self.#resolveCallTimeouts(responseStream));
+                const signal = ctx.signal;
                 const normalizedReq = self.#unwrapRequest(req, inputSchema);
 
                 try {
-                    ctx.signal.throwIfAborted();
-                    const result = await timeoutController.race(
-                        Promise.resolve(handler(normalizedReq, ctx.requestHeader, ctx)),
+                    const result = await raceWithSignal(
+                        handler(normalizedReq, ctx.requestHeader, ctx),
+                        signal,
                     );
 
                     if (isAsyncIterable(result)) {
-                        for await (const value of self.#iterateWithTimeout(result, timeoutController)) {
-                            ctx.signal.throwIfAborted();
-                            if (timeoutController.isExpired()) return;
+                        for await (const value of self.#iterateWithSignal(result, signal)) {
                             yield wrapBySchema(value, outputSchema);
                         }
                         return;
                     }
 
                     if (isObservable(result)) {
-                        yield* self.#observableToIterable(result, timeoutController, outputSchema);
+                        yield* self.#observableToIterable(result, outputSchema, signal);
                         return;
                     }
 
@@ -177,58 +175,50 @@ export class ConnectRpcServer
                     }
                 } catch (err) {
                     throw self.#toConnectError(err);
-                } finally {
-                    timeoutController.dispose();
                 }
             };
         }
 
         return async (req: any, ctx: HandlerContext) => {
-            const timeoutController = new TimeoutController(this.#resolveCallTimeouts(responseStream));
             const normalizedReq = this.#unwrapRequest(req, inputSchema);
 
             try {
                 ctx.signal.throwIfAborted();
-                const result = await timeoutController.race(
-                    Promise.resolve(handler(normalizedReq, ctx.requestHeader, ctx)),
-                );
-                const resolved = await this.#resolveMaybeAsync(result, timeoutController);
+
+                const result = await handler(normalizedReq, ctx.requestHeader, ctx);
+                ctx.signal.throwIfAborted();
+
+                let resolved = await result;
+                if (isObservable(resolved)) {
+                    resolved = await firstValueFromObservable(resolved, ctx.signal);
+                }
+
+                ctx.signal.throwIfAborted();
+
                 return wrapBySchema(resolved, outputSchema);
             } catch (err) {
                 throw this.#toConnectError(err);
-            } finally {
-                timeoutController.dispose();
             }
         };
     }
 
-    async *#iterateWithTimeout(
+    async *#iterateWithSignal(
         iterable: AsyncIterable<unknown>,
-        timeoutController: TimeoutController,
+        signal: AbortSignal,
     ): AsyncGenerator<unknown, void, void> {
         const iterator = iterable[Symbol.asyncIterator]();
 
         try {
             while (true) {
-                const next = await timeoutController.race(iterator.next());
+                const next = await raceWithSignal(iterator.next(), signal);
                 if (next.done) {
                     return;
                 }
-
                 yield next.value;
             }
         } finally {
             await iterator.return?.();
         }
-    }
-
-    async #resolveMaybeAsync(value: unknown, timeoutController?: TimeoutController): Promise<unknown> {
-        if (isObservable(value)) {
-            return timeoutController
-                ? await timeoutController.race(firstValueFrom(value as Parameters<typeof firstValueFrom>[0]))
-                : await firstValueFrom(value as Parameters<typeof firstValueFrom>[0]);
-        }
-        return value;
     }
 
     #unwrapRequest(value: unknown, schema: DescMessage): unknown {
@@ -250,13 +240,20 @@ export class ConnectRpcServer
 
     async *#observableToIterable(
         observable: any,
-        timeoutController: TimeoutController,
         schema: DescMessage | DescField | undefined,
+        signal: AbortSignal,
     ): AsyncGenerator<any> {
         const buffer: any[] = [];
         let notify: (() => void) | null = null;
         let error: unknown = null;
         let complete = false;
+
+        const onAbort = () => {
+            notify?.();
+            notify = null;
+        };
+
+        signal.addEventListener("abort", onAbort, { once: true });
 
         const subscription = observable.subscribe({
             next: (v: any) => {
@@ -278,20 +275,21 @@ export class ConnectRpcServer
 
         try {
             while (true) {
+                signal.throwIfAborted();
+
                 if (buffer.length > 0) {
                     yield buffer.shift();
                     continue;
                 }
                 if (error) throw error;
                 if (complete) return;
-                if (timeoutController.isExpired()) return;
-                await timeoutController.race(
-                    new Promise<void>((r) => {
-                        notify = r;
-                    }),
-                );
+
+                await new Promise<void>((resolve) => {
+                    notify = resolve;
+                });
             }
         } finally {
+            signal.removeEventListener("abort", onAbort);
             subscription.unsubscribe();
         }
     }
@@ -318,25 +316,21 @@ export class ConnectRpcServer
         return null;
     }
 
-    #resolveCallTimeouts(responseStream: boolean): CallTimeouts {
-        const timeouts = this.#options.timeouts ?? {};
-        const defaultTimeoutMs = normalizeTimeout(
-            responseStream ? timeouts.defaultStreamTimeout : timeouts.defaultUnaryTimeout,
-        );
-        const maxTimeoutMs = normalizeTimeout(
-            responseStream ? timeouts.maxStreamTimeout : timeouts.maxUnaryTimeout,
-        );
-
-        const requestedTimeoutMs = defaultTimeoutMs;
-        const totalTimeoutMs = capTimeout(
-            requestedTimeoutMs,
-            maxTimeoutMs ?? (responseStream ? MAX_STREAM_TIMEOUT : MAX_UNARY_TIMEOUT),
-        );
-
-        return { totalTimeoutMs };
-    }
-
     #toConnectError(err: any): ConnectError {
+        if (err?.name === "TimeoutError") {
+            return new ConnectError(err.message, Code.DeadlineExceeded, undefined, undefined, err);
+        }
+
+        if (err?.name === "AbortError") {
+            return new ConnectError(
+                err.message || "Request canceled",
+                Code.Canceled,
+                undefined,
+                undefined,
+                err,
+            );
+        }
+
         // connect error
         if (err instanceof ConnectError) {
             return err;
@@ -366,43 +360,12 @@ export class ConnectRpcServer
         }
     }
 
-    override on<
-        E extends ConnectServerEventType = ConnectServerEventType,
-        H extends ConnectServerEventMap[E] = ConnectServerEventMap[E],
-    >(event: E, listener: H): void {
-        if (!this.#eventListeners.has(event)) {
-            this.#eventListeners.set(event, new Set());
-        }
-        this.#eventListeners.get(event)?.add(listener);
+    override on(event: string, listener: (...args: any[]) => any): void {
+        this.#server?.on(event, listener);
     }
 
-    off<E extends ConnectServerEventType = ConnectServerEventType>(
-        event: E,
-        listener: (...args: any[]) => any,
-    ): this {
-        const listeners = this.#eventListeners.get(event);
-        if (listeners) {
-            listeners.delete(listener);
-        }
-
+    off(event: string, listener: (...args: any[]) => any): this {
+        this.#server?.off(event, listener);
         return this;
-    }
-
-    #dispatchEvent<EventKey extends ConnectServerEventType>(
-        event: EventKey,
-        ...args: Parameters<ConnectServerEventMap[EventKey]>
-    ): void {
-        const listeners = this.#eventListeners.get(event);
-        if (!listeners) {
-            return;
-        }
-
-        for (const listener of listeners) {
-            try {
-                listener(...args);
-            } catch (err) {
-                this.#logger.error(`Error in event listener for event "${event}":`, err);
-            }
-        }
     }
 }

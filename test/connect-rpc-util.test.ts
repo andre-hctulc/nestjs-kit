@@ -2,9 +2,9 @@ import { fromJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { ChunkSchema, ExhyveExtensionRuntime, type Chunk } from "./generated/gateway_pb.js";
 import {
-    type PlainFromGenerated,
+    type UnwrapValue,
     unwrapBySchema,
-    unwrapProtoMessage,
+    unwrapValue,
     wrapBySchema,
 } from "../src/connect-rpc/value.util.js";
 import { describe, it, expect } from "@jest/globals";
@@ -63,7 +63,7 @@ describe("connect-rpc value wrapping", () => {
         };
 
         expect((wrapped.data as { $typeName?: string }).$typeName).toBe("google.protobuf.Value");
-        expect(unwrapProtoMessage(wrapped.data)).toEqual({
+        expect(unwrapBySchema(wrapped.data, dataFieldSchema)).toEqual({
             status: "ok",
             items: [1, 2],
         });
@@ -90,7 +90,7 @@ describe("connect-rpc value wrapping", () => {
         };
 
         expect(wrapped.$typeName).toBe("google.protobuf.Value");
-        expect(unwrapProtoMessage(wrapped)).toEqual({ hello: "world", n: 1 });
+        expect(unwrapBySchema(wrapped, dataFieldSchema)).toEqual({ hello: "world", n: 1 });
     });
 
     it("unwraps wrapped values with a Value field descriptor schema", () => {
@@ -126,11 +126,11 @@ describe("connect-rpc value wrapping", () => {
 
         const wrapped = wrapBySchema(params, paramsFieldSchema) as { $typeName?: string };
         expect(wrapped.$typeName).toBe("google.protobuf.Struct");
-        expect(unwrapBySchema(params, paramsFieldSchema)).toEqual(params);
+        expect(unwrapBySchema(wrapped, paramsFieldSchema)).toEqual(params);
     });
 
     it("accepts Buf-generated plain JSON message shapes as the consumer-facing type", () => {
-        const plainChunk: PlainFromGenerated<Chunk> = {
+        const plainChunk: UnwrapValue<Chunk> = {
             done: false,
             stream: true,
             data: {

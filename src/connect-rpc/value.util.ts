@@ -3,11 +3,7 @@ import type { ListValue, Value } from "@bufbuild/protobuf/wkt";
 import { ListValueSchema, StructSchema, ValueSchema } from "@bufbuild/protobuf/wkt";
 import { getProperty, setProperty } from "dot-prop";
 
-type RemoveMessageMeta<T> = T extends { $typeName?: any }
-    ? Omit<T, "$typeName">
-    : T extends { $typeName: any }
-      ? Omit<T, "$typeName">
-      : T;
+type RemoveSystemFields<T> = Omit<T, `$${string}`>;
 
 export type UnwrapValue<T> = T extends Value
     ? JsonValue
@@ -16,52 +12,51 @@ export type UnwrapValue<T> = T extends Value
       : T extends readonly (infer U)[]
         ? UnwrapValue<U>[]
         : T extends object
-          ? { [K in keyof RemoveMessageMeta<T>]: UnwrapValue<RemoveMessageMeta<T>[K]> }
+          ? { [K in keyof RemoveSystemFields<T>]: UnwrapValue<RemoveSystemFields<T>[K]> }
           : T;
 
-
-export function unwrapValue<T = unknown>(val: Value | ListValue): T {
+export function unwrapValue<T extends Value | ListValue>(val: T): UnwrapValue<T> {
     if ("values" in val) {
-        return val.values.map(unwrapValue) as T;
+        return val.values.map(unwrapValue) as UnwrapValue<T>;
     }
 
     switch (val.kind.case) {
         case "nullValue":
-            return null as T;
+            return null as UnwrapValue<T>;
         case "boolValue":
-            return val.kind.value as T; // boolean
+            return val.kind.value as UnwrapValue<T>; // boolean
         case "numberValue":
-            return val.kind.value as T; // number
+            return val.kind.value as UnwrapValue<T>; // number
         case "stringValue":
-            return val.kind.value as T; // string
+            return val.kind.value as UnwrapValue<T>; // string
         case "listValue":
-            return val.kind.value.values.map(unwrapValue) as T; // recursive
+            return val.kind.value.values.map(unwrapValue) as UnwrapValue<T>; // recursive
         case "structValue":
             // Convert Struct to plain object
             const obj: Record<string, unknown> = {};
             for (const [key, v] of Object.entries(val.kind.value.fields)) {
                 obj[key] = unwrapValue(v);
             }
-            return obj as T;
+            return obj as UnwrapValue<T>;
         default:
-            return undefined as T;
+            return undefined as any;
     }
 }
 
-export function unwrapProtoMessage<T = unknown>(value: unknown): T {
+function unwrapProtoMessage<T = unknown>(value: T): UnwrapValue<T> {
     if (!value || typeof value !== "object") {
-        return value as T;
+        return value as UnwrapValue<T>;
     }
 
     const message = value as Record<string, any> & { $typeName?: string };
 
     switch (message.$typeName) {
         case "google.protobuf.Value":
-            return unwrapValue(message as Value) as T;
+            return unwrapValue(message as Value) as UnwrapValue<T>;
         case "google.protobuf.ListValue":
-            return unwrapValue(message as ListValue) as T;
+            return unwrapValue(message as ListValue) as UnwrapValue<T>;
         default:
-            return value as T;
+            return value as UnwrapValue<T>;
     }
 }
 
@@ -122,13 +117,13 @@ export function wrapBySchema(value: unknown, schema: DescMessage | DescField | u
     return value;
 }
 
-export function unwrapBySchema(value: unknown, schema: DescMessage | DescField | undefined): unknown {
+export function unwrapBySchema<T>(value: T, schema: DescMessage | DescField | undefined): UnwrapValue<T> {
     if (value === null || value === undefined) {
-        return value;
+        return value as UnwrapValue<T>;
     }
 
     if (!schema) {
-        return value;
+        return value as UnwrapValue<T>;
     }
 
     if (schema.kind === "message") {
@@ -141,14 +136,14 @@ export function unwrapBySchema(value: unknown, schema: DescMessage | DescField |
         }
 
         if (schema.typeName === "google.protobuf.Struct") {
-            return value;
+            return value as UnwrapValue<T>;
         }
 
         if (Array.isArray(value)) {
-            return value.map((item) => unwrapBySchema(item, schema));
+            return value.map((item) => unwrapBySchema(item, schema)) as UnwrapValue<T>;
         }
 
-        const copy = { ...(value as Record<string, unknown>) };
+        const copy: any = { ...(value as Record<string, unknown>) };
 
         for (const field of schema.fields) {
             const fieldValue = copy[field.localName];
@@ -163,10 +158,10 @@ export function unwrapBySchema(value: unknown, schema: DescMessage | DescField |
     }
 
     if (schema.kind === "field") {
-        return unwrapField(value, schema);
+        return unwrapField(value, schema) as UnwrapValue<T>;
     }
 
-    return value;
+    return value as UnwrapValue<T>;
 }
 
 function wrapField(value: unknown, field: DescField): unknown {
