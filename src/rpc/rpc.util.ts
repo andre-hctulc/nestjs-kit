@@ -1,5 +1,6 @@
 import type { RpcResponse, RpcResponseInput, RpcErrorResponse, RpcErrorResponseInput } from "./rpc.model.js";
 import type { Metadata } from "@grpc/grpc-js";
+import type { HandlerContext } from "@connectrpc/connect";
 
 /**
  * Create a JSON-RPC response object.
@@ -23,10 +24,28 @@ export function createRpcErrorResponse(data: RpcErrorResponseInput): RpcErrorRes
     };
 }
 
-export async function assertGrpcContext(context: unknown): Promise<Metadata> {
-    const { Metadata } = await import("@grpc/grpc-js");
-    if (!(context instanceof Metadata)) {
+export function assertGrpcContext(context: unknown): Metadata {
+    if (
+        typeof (context as Metadata).add !== "function" ||
+        typeof (context as Metadata).get !== "function" ||
+        typeof (context as Metadata).getMap !== "function"
+    ) {
         throw new Error("Not a grpc Metadata context");
     }
-    return context;
+    return context as Metadata;
+}
+
+export function assertConnectRpcContext(context: unknown): HandlerContext {
+    if (
+        !((context as HandlerContext)?.requestHeader instanceof Headers) ||
+        !(context as HandlerContext)?.service ||
+        typeof (context as HandlerContext)?.service !== "object"
+    ) {
+        throw new Error("Not a connect rpc HandlerContext");
+    }
+    return context as HandlerContext;
+}
+
+export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
+    return !!value && typeof (value as any)[Symbol.asyncIterator] === "function";
 }

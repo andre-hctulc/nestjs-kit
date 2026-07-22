@@ -10,6 +10,7 @@
         "./grpc-js": "./dist/grpc-js/index.js",
         "./http-rpc": "./dist/http-rpc/index.js",
         "./interactive": "./dist/interactive/index.js",
+        "./connect-rpc": "./dist/connect-rpc/index.js",
         "./rpc": "./dist/rpc/index.js",
         "./ws": "./dist/ws/index.js",
         "./zod": "./dist/zod/index.js"
@@ -34,10 +35,12 @@
     "license": "ISC",
     "dependencies": {
         "@nestjs/common": "^11",
-        "commander": "^15.0.0",
         "cookie": "^1.0.2"
     },
     "devDependencies": {
+        "@bufbuild/protobuf": "^2.13.0",
+        "@connectrpc/connect": "^2.1.2",
+        "@connectrpc/connect-node": "^2.1.2",
         "@fastify/multipart": "^9.4.0",
         "@grpc/grpc-js": "^1.14.4",
         "@nestjs/microservices": "^11",
