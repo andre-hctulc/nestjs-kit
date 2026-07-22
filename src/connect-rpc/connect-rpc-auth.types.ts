@@ -5,3 +5,5 @@ declare module "@connectrpc/connect" {
         apiAccess: ApiAccess;
     }
 }
+
+export {};
