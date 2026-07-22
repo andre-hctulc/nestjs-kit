@@ -3,6 +3,23 @@ import type { ListValue, Value } from "@bufbuild/protobuf/wkt";
 import { ListValueSchema, StructSchema, ValueSchema } from "@bufbuild/protobuf/wkt";
 import { getProperty, setProperty } from "dot-prop";
 
+type RemoveMessageMeta<T> = T extends { $typeName?: any }
+    ? Omit<T, "$typeName">
+    : T extends { $typeName: any }
+      ? Omit<T, "$typeName">
+      : T;
+
+export type UnwrapValue<T> = T extends Value
+    ? JsonValue
+    : T extends ListValue
+      ? JsonValue[]
+      : T extends readonly (infer U)[]
+        ? UnwrapValue<U>[]
+        : T extends object
+          ? { [K in keyof RemoveMessageMeta<T>]: UnwrapValue<RemoveMessageMeta<T>[K]> }
+          : T;
+
+
 export function unwrapValue<T = unknown>(val: Value | ListValue): T {
     if ("values" in val) {
         return val.values.map(unwrapValue) as T;

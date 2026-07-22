@@ -145,7 +145,7 @@ export class ConnectRpcServer
         }
     }
 
-    #handle(handler: MessageHandler, responseStream: boolean, inputSchema: any, outputSchema: any) {
+    #handle(handler: MessageHandler, responseStream: boolean, inputSchema: DescMessage, outputSchema: any) {
         if (responseStream) {
             const self = this;
             return async function* (req: any, ctx: HandlerContext): AsyncGenerator<any> {
@@ -231,7 +231,7 @@ export class ConnectRpcServer
         return value;
     }
 
-    #unwrapRequest(value: unknown, schema: any): unknown {
+    #unwrapRequest(value: unknown, schema: DescMessage): unknown {
         if (isAsyncIterable(value)) {
             return this.#unwrapAsyncIterable(value, schema);
         }
@@ -239,7 +239,10 @@ export class ConnectRpcServer
         return unwrapBySchema(value, schema);
     }
 
-    async *#unwrapAsyncIterable(iterable: AsyncIterable<unknown>, schema: any): AsyncGenerator<unknown> {
+    async *#unwrapAsyncIterable(
+        iterable: AsyncIterable<unknown>,
+        schema: DescMessage,
+    ): AsyncGenerator<unknown> {
         for await (const item of iterable) {
             yield unwrapBySchema(item, schema);
         }
