@@ -1,31 +1,43 @@
-import type { Value } from "@bufbuild/protobuf/wkt";
+import type { ListValue, Value } from "@bufbuild/protobuf/wkt";
 
-export function unwrapValue(val: Value): unknown {
+export function unwrapValue<T = unknown>(val: Value | ListValue): T {
+    if ("values" in val) {
+        return val.values.map(unwrapValue) as T;
+    }
+
     switch (val.kind.case) {
         case "nullValue":
-            return null;
+            return null as T;
         case "boolValue":
-            return val.kind.value; // boolean
+            return val.kind.value as T; // boolean
         case "numberValue":
-            return val.kind.value; // number
+            return val.kind.value as T; // number
         case "stringValue":
-            return val.kind.value; // string
+            return val.kind.value as T; // string
         case "listValue":
-            return val.kind.value.values.map(unwrapValue); // recursive
+            return val.kind.value.values.map(unwrapValue) as T; // recursive
         case "structValue":
             // Convert Struct to plain object
             const obj: Record<string, unknown> = {};
             for (const [key, v] of Object.entries(val.kind.value.fields)) {
                 obj[key] = unwrapValue(v);
             }
-            return obj;
+            return obj as T;
         default:
-            return undefined;
+            return undefined as T;
     }
 }
 
 export function wrapValue(value: any): Value {
-    if (value === null) {
+    if (Array.isArray(value)) {
+        return {
+            kind: {
+                case: "listValue",
+                value: { values: value.map(wrapValue), $typeName: "google.protobuf.ListValue" },
+            },
+            $typeName: "google.protobuf.Value",
+        };
+    } else if (value === null) {
         return { kind: { case: "nullValue", value: 0 }, $typeName: "google.protobuf.Value" };
     } else if (typeof value === "boolean") {
         return { kind: { case: "boolValue", value }, $typeName: "google.protobuf.Value" };
