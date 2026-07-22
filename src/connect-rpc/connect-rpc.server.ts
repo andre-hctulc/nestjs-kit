@@ -54,7 +54,10 @@ type ConnectServerEventMap = {
 type ConnectServerEventType = string & keyof ConnectServerEventMap;
 type MessageHandler = (...args: any[]) => any;
 
-export class ConnectRpcServer extends Server<ConnectServerEventMap, string> implements CustomTransportStrategy {
+export class ConnectRpcServer
+    extends Server<ConnectServerEventMap, string>
+    implements CustomTransportStrategy
+{
     #logger = new Logger(ConnectRpcServer.name);
     #options: ConnectRpcServerOptions;
     #address: string;
@@ -302,23 +305,18 @@ export class ConnectRpcServer extends Server<ConnectServerEventMap, string> impl
         return { totalTimeoutMs };
     }
 
-    #toConnectError(err: unknown): ConnectError {
+    #toConnectError(err: any): ConnectError {
+        // connect error
         if (err instanceof ConnectError) {
             return err;
         }
 
-        const details = (err as any)?.details;
-        const message = (err as any)?.message || "Internal server error";
-        const httpStatusCode = typeof details?.httpStatusCode === "number" ? details.httpStatusCode : 500;
+        const message = err?.message || "Internal server error";
+        const code = Number.isInteger(err?.code) ? err.code : Code.Internal;
+        const details = (err as any)?.details || { code: err?.code };
         const outgoingDetails = this.#toOutgoingDetails(details);
 
-        return new ConnectError(
-            message,
-            this.#mapHttpToCode(httpStatusCode),
-            undefined,
-            outgoingDetails,
-            err,
-        );
+        return new ConnectError(message, code, undefined, outgoingDetails, err);
     }
 
     #toOutgoingDetails(details: unknown) {

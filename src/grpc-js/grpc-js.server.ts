@@ -410,25 +410,25 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
         return Math.max(0, deadlineAt - Date.now());
     }
 
-    #toGrpcError(err: unknown): Error {
+    #toGrpcError(err: any): Error {
+        // grpc error
         if (err instanceof Error && typeof (err as any).code === "number") {
             return err;
         }
 
-        const details = (err as any)?.details;
-        const message = (err as any)?.message ?? "Internal server error";
-        const httpStatusCode = typeof details?.httpStatusCode === "number" ? details.httpStatusCode : 500;
+        const message = err?.message ?? "Internal server error";
+        const code = Number.isInteger(err?.code) ? err.code : grpc.status.UNKNOWN;
+        const details = err?.details || { code: err?.code };
+
+        const metadata = new Metadata();
+        const detailsJson = JSON.stringify(details);
+        metadata.set("x-error-details", detailsJson);
 
         const mapped = Object.assign(new Error(message), {
-            code: mapHttpStatus(httpStatusCode),
-            details: details ? JSON.stringify(details) : JSON.stringify({ message }),
+            code,
+            details: detailsJson,
+            metadata,
         });
-
-        if (details) {
-            const metadata = new Metadata();
-            metadata.set("x-error-details", JSON.stringify(details));
-            (mapped as any).metadata = metadata;
-        }
 
         return mapped;
     }
