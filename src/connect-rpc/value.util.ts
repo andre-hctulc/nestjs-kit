@@ -1,4 +1,5 @@
 import type { ListValue, Value } from "@bufbuild/protobuf/wkt";
+import { getProperty, setProperty } from "dot-prop";
 
 export function unwrapValue<T = unknown>(val: Value | ListValue): T {
     if ("values" in val) {
@@ -65,4 +66,26 @@ export function wrapValue(value: any): Value {
     } else {
         return { kind: { case: undefined, value: undefined }, $typeName: "google.protobuf.Value" };
     }
+}
+
+export function unwrapAt<T extends object = Record<string, unknown>>(
+    value: object,
+    paths: string | string[],
+): T {
+    if (typeof paths === "string") {
+        paths = [paths];
+    }
+
+    const copy = structuredClone(value);
+
+    for (const path of paths) {
+        const wrappedValue = getProperty(copy, path);
+        if (!wrappedValue) {
+            continue;
+        }
+        const unwrappedValue = unwrapValue(wrappedValue as Value);
+        setProperty(copy, path, unwrappedValue);
+    }
+
+    return copy as T;
 }
