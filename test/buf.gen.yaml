@@ -1,0 +1,11 @@
+version: v2
+clean: true
+plugins:
+  - remote: buf.build/bufbuild/es
+    out: test/generated
+    opt:
+      - target=ts
+  - remote: buf.build/connectrpc/es
+    out: test/generated
+    opt:
+      - target=ts

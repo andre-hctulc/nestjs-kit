@@ -3,7 +3,13 @@ import { Server } from "@nestjs/microservices";
 import { Logger } from "@nestjs/common";
 import { ConnectError, Code, type ConnectRouter, type HandlerContext } from "@connectrpc/connect";
 import { connectNodeAdapter } from "@connectrpc/connect-node";
-import { fromJson, type DescService, type JsonValue } from "@bufbuild/protobuf";
+import {
+    fromJson,
+    type DescField,
+    type DescMessage,
+    type DescService,
+    type JsonValue,
+} from "@bufbuild/protobuf";
 import { StructSchema } from "@bufbuild/protobuf/wkt";
 import http2, { type ServerOptions } from "node:http2";
 import { isObservable, firstValueFrom } from "rxjs";
@@ -14,6 +20,7 @@ import {
     type CallTimeouts,
 } from "../common/util/system/timeout.util.js";
 import { isAsyncIterable } from "../rpc/rpc.util.js";
+import { unwrapBySchema, wrapBySchema } from "./value.util.js";
 
 /** 5min in milliseconds */
 const MAX_UNARY_TIMEOUT = 300_000;
@@ -128,7 +135,7 @@ export class ConnectRpcServer
 
                 const isStreaming =
                     method.methodKind === "server_streaming" || method.methodKind === "bidi_streaming";
-                impl[method.localName] = this.#handle(handler, isStreaming);
+                impl[method.localName] = this.#handle(handler, isStreaming, method.input, method.output);
                 this.#logger.log(
                     `Registered Connect method [MessagePattern].${serviceDesc.typeName}.${method.localName}`,
                 );
@@ -138,34 +145,35 @@ export class ConnectRpcServer
         }
     }
 
-    #handle(handler: MessageHandler, responseStream: boolean) {
+    #handle(handler: MessageHandler, responseStream: boolean, inputSchema: any, outputSchema: any) {
         if (responseStream) {
             const self = this;
             return async function* (req: any, ctx: HandlerContext): AsyncGenerator<any> {
                 const timeoutController = new TimeoutController(self.#resolveCallTimeouts(responseStream));
+                const normalizedReq = self.#unwrapRequest(req, inputSchema);
 
                 try {
                     ctx.signal.throwIfAborted();
                     const result = await timeoutController.race(
-                        Promise.resolve(handler(req, ctx.requestHeader, ctx)),
+                        Promise.resolve(handler(normalizedReq, ctx.requestHeader, ctx)),
                     );
 
                     if (isAsyncIterable(result)) {
                         for await (const value of self.#iterateWithTimeout(result, timeoutController)) {
                             ctx.signal.throwIfAborted();
                             if (timeoutController.isExpired()) return;
-                            yield value;
+                            yield wrapBySchema(value, outputSchema);
                         }
                         return;
                     }
 
                     if (isObservable(result)) {
-                        yield* self.#observableToIterable(result, timeoutController);
+                        yield* self.#observableToIterable(result, timeoutController, outputSchema);
                         return;
                     }
 
                     if (result !== undefined) {
-                        yield result;
+                        yield wrapBySchema(result, outputSchema);
                     }
                 } catch (err) {
                     throw self.#toConnectError(err);
@@ -177,13 +185,15 @@ export class ConnectRpcServer
 
         return async (req: any, ctx: HandlerContext) => {
             const timeoutController = new TimeoutController(this.#resolveCallTimeouts(responseStream));
+            const normalizedReq = this.#unwrapRequest(req, inputSchema);
 
             try {
                 ctx.signal.throwIfAborted();
                 const result = await timeoutController.race(
-                    Promise.resolve(handler(req, ctx.requestHeader, ctx)),
+                    Promise.resolve(handler(normalizedReq, ctx.requestHeader, ctx)),
                 );
-                return await this.#resolveMaybeAsync(result, timeoutController);
+                const resolved = await this.#resolveMaybeAsync(result, timeoutController);
+                return wrapBySchema(resolved, outputSchema);
             } catch (err) {
                 throw this.#toConnectError(err);
             } finally {
@@ -221,7 +231,25 @@ export class ConnectRpcServer
         return value;
     }
 
-    async *#observableToIterable(observable: any, timeoutController: TimeoutController): AsyncGenerator<any> {
+    #unwrapRequest(value: unknown, schema: any): unknown {
+        if (isAsyncIterable(value)) {
+            return this.#unwrapAsyncIterable(value, schema);
+        }
+
+        return unwrapBySchema(value, schema);
+    }
+
+    async *#unwrapAsyncIterable(iterable: AsyncIterable<unknown>, schema: any): AsyncGenerator<unknown> {
+        for await (const item of iterable) {
+            yield unwrapBySchema(item, schema);
+        }
+    }
+
+    async *#observableToIterable(
+        observable: any,
+        timeoutController: TimeoutController,
+        schema: DescMessage | DescField | undefined,
+    ): AsyncGenerator<any> {
         const buffer: any[] = [];
         let notify: (() => void) | null = null;
         let error: unknown = null;
@@ -229,7 +257,7 @@ export class ConnectRpcServer
 
         const subscription = observable.subscribe({
             next: (v: any) => {
-                buffer.push(v);
+                buffer.push(wrapBySchema(v, schema));
                 notify?.();
                 notify = null;
             },
@@ -312,8 +340,12 @@ export class ConnectRpcServer
         }
 
         const message = err?.message || "Internal server error";
-        const code = Number.isInteger(err?.code) ? err.code : Code.Internal;
-        const details = (err as any)?.details || { code: err?.code };
+        const details = (err as any)?.details || {};
+        const code: number = Number.isInteger(err?.code)
+            ? (err.code as number)
+            : Number.isInteger(details?.rpcStatusCode)
+              ? (details.rpcStatusCode as number)
+              : Code.Internal;
         const outgoingDetails = this.#toOutgoingDetails(details);
 
         return new ConnectError(message, code, undefined, outgoingDetails, err);
@@ -328,31 +360,6 @@ export class ConnectRpcServer
             return [{ desc: StructSchema, value: structDetail }];
         } catch {
             return undefined;
-        }
-    }
-
-    #mapHttpToCode(httpStatusCode: number): Code {
-        switch (httpStatusCode) {
-            case 400:
-                return Code.InvalidArgument;
-            case 401:
-                return Code.Unauthenticated;
-            case 403:
-                return Code.PermissionDenied;
-            case 404:
-                return Code.NotFound;
-            case 409:
-                return Code.AlreadyExists;
-            case 429:
-                return Code.ResourceExhausted;
-            case 499:
-                return Code.Canceled;
-            case 501:
-                return Code.Unimplemented;
-            case 503:
-                return Code.Unavailable;
-            default:
-                return Code.Internal;
         }
     }
 

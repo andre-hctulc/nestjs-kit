@@ -3,7 +3,7 @@ import type { ErrorShape } from "../common/errors/error-shape.interface.js";
 import type { ServiceErrorDetails, ServiceErrorOptions } from "../common/index.js";
 import { mergeOptions, mergeTags } from "../common/errors/service-error.util.js";
 
-export class RpcServiceError extends RpcException implements ErrorShape {
+export class GrpcServiceError extends RpcException implements ErrorShape {
     static opts = mergeOptions;
 
     readonly code: string;
@@ -12,8 +12,8 @@ export class RpcServiceError extends RpcException implements ErrorShape {
     readonly rpcStatusCode: number;
 
     constructor(message: string, statusCode?: number, options: ServiceErrorOptions = {}) {
-        const code = options.code || "RPC_SERVICE_ERROR";
-        const rpcStatusCode = statusCode ?? -32603;
+        const code = options.code || "GRPC_SERVICE_ERROR";
+        const rpcStatusCode = statusCode ?? 2;
         const details: ServiceErrorDetails = {
             ...options.details,
             rpcStatusCode,

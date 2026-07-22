@@ -15,17 +15,21 @@ export async function sendError(
     options?: SendErrorOptions,
 ): Promise<any> {
     const contextType = host.getType();
+    let status: number;
 
     switch (contextType) {
         case "http": {
             const http = host.switchToHttp();
             const res = http.getResponse<FastifyReply>();
-            const status =
-                typeof options?.httpStatusCode === "number"
-                    ? options.httpStatusCode
-                    : originalError instanceof HttpException
-                      ? originalError.getStatus()
-                      : 500;
+
+            if (originalError instanceof HttpException) {
+                status = originalError.getStatus();
+            } else if (Number.isInteger(options?.httpStatusCode)) {
+                status = options?.httpStatusCode as number;
+            } else {
+                status = 500;
+            }
+
             res.status(status).header("Content-Type", "application/json").send(errorObj);
             break;
         }

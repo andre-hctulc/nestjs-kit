@@ -1,5 +1,5 @@
 import { type CustomTransportStrategy, Server, Transport } from "@nestjs/microservices";
-import grpc, { Metadata, type ServiceDefinition, type UntypedHandleCall } from "@grpc/grpc-js";
+import grpc, { Metadata, type ServiceDefinition, type UntypedHandleCall, status } from "@grpc/grpc-js";
 import { Logger } from "@nestjs/common";
 import {
     isWritableCall,
@@ -417,8 +417,12 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
         }
 
         const message = err?.message ?? "Internal server error";
-        const code = Number.isInteger(err?.code) ? err.code : grpc.status.UNKNOWN;
-        const details = err?.details || { code: err?.code };
+        const details = err?.details || {};
+        const code = Number.isInteger(err?.code)
+            ? (err.code as number)
+            : Number.isInteger(details?.rpcStatusCode)
+              ? (details.rpcStatusCode as number)
+              : status.INTERNAL;
 
         const metadata = new Metadata();
         const detailsJson = JSON.stringify(details);

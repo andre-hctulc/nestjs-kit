@@ -1,6 +1,7 @@
 export interface ServiceErrorDetails {
     tags?: string[];
     httpStatusCode?: number;
+    rpcStatusCode?: number;
     private?: boolean;
     [key: string]: any;
 }
