@@ -2,31 +2,41 @@ import { RpcException } from "@nestjs/microservices";
 import type { ErrorShape } from "../common/errors/error-shape.interface.js";
 import type { ServiceErrorDetails, ServiceErrorOptions } from "../common/index.js";
 import { mergeOptions, mergeTags } from "../common/errors/service-error.util.js";
+import { Code } from "@connectrpc/connect";
 
-export class ConnectRpcServiceError extends RpcException implements ErrorShape {
+export class ConnectServiceError extends RpcException implements ErrorShape {
     static opts = mergeOptions;
 
-    readonly code: string;
-    readonly details: ServiceErrorDetails;
-    readonly cause: unknown = undefined;
-    readonly rpcStatusCode: number;
+    readonly errorCode: string;
+    readonly statusCode: number;
 
-    constructor(message: string, statusCode?: number, options: ServiceErrorOptions = {}) {
-        const code = options.code || "CONNECT_SERVICE_ERROR";
-        const rpcStatusCode = statusCode ?? 2;
+    readonly details: ServiceErrorDetails;
+
+    readonly cause: unknown;
+
+    constructor(message: string, options: ServiceErrorOptions = {}) {
+        const errorCode = options.errorCode || "CONNECT_SERVICE_ERROR";
+        // grpc error
+        const statusCode = options.statusCode ?? Code.Internal;
+
         const details: ServiceErrorDetails = {
             ...options.details,
-            rpcStatusCode,
-            tags: mergeTags(options),
+            errorCode,
+            statusCode,
+            tags: mergeTags({ details: { tags: ["connect_service"] } }, options),
         };
+
         super({
             message,
-            code,
+            errorCode,
+            statusCode,
             details,
+            // add rpc status code as code for connect/grpc compatibility
+            code: statusCode,
         });
-        this.rpcStatusCode = rpcStatusCode;
-        this.code = code;
+
+        this.errorCode = errorCode;
+        this.statusCode = statusCode;
         this.details = details;
-        this.cause = options.cause;
     }
 }

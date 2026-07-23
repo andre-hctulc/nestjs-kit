@@ -1,20 +1,18 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException, Logger } from "@nestjs/common";
 import { getErrorLocationDescription, sendError } from "../errors/errors.util.js";
-import type { FastifyRequest } from "fastify";
 import { ServiceError } from "../errors/service-error.class.js";
 import type { ErrorShape } from "../errors/error-shape.interface.js";
 
 export type ErrorMapper = (error: unknown) => ErrorShape | Error | null | void | undefined;
 
 /**
- * Catches all errors and maps them to a {@link ErrorShape}
+ * Catches all errors and maps them to an {@link ErrorShape}
  */
 @Catch()
 export class GlobalExceptionFilter<T> implements ExceptionFilter {
     #logger = new Logger(this.constructor.name);
 
     async catch(exception: unknown, host: ArgumentsHost) {
-        const originalException = exception;
         let error: ErrorShape;
         let unexpected: boolean;
 
@@ -23,13 +21,15 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
             unexpected = false;
             if (exception.details?.private === true) {
                 error = {
-                    code: exception.code,
+                    statusCode: exception.statusCode,
+                    errorCode: exception.errorCode,
                     message: "An unexpected error occurred",
                     details: {},
                 };
             } else {
                 error = {
-                    code: exception.code,
+                    errorCode: exception.errorCode,
+                    statusCode: exception.statusCode,
                     message: exception.message,
                     details: exception.details,
                 };
@@ -42,9 +42,15 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
             typeof exception.getError === "function"
         ) {
             unexpected = false;
-            const message = exception.getError();
+
+            let message: any = exception.getError();
+            if (message && typeof message === "object") {
+                message = String(message.message || "");
+            }
+
             error = {
-                code: "UNKNOWN",
+                errorCode: "TRANSPORT_EXCEPTION",
+                statusCode: 500,
                 message: String(message),
                 details: {},
             };
@@ -53,13 +59,14 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
         else if (exception instanceof HttpException) {
             unexpected = false;
 
-            let message = exception.getResponse();
-            if (typeof message === "object") {
-                message = String((message as any).message || "");
+            let message: any = exception.getResponse();
+            if (message && typeof message === "object") {
+                message = String(message.message || "");
             }
 
             error = {
-                code: String(exception.getStatus()),
+                errorCode: "HTTP_EXCEPTION",
+                statusCode: exception.getStatus(),
                 message: String(message),
                 details: {},
             };
@@ -68,7 +75,8 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
         else {
             unexpected = true;
             error = {
-                code: "UNKNOWN",
+                errorCode: "UNKNOWN",
+                statusCode: 500,
                 message: "An unexpected error occurred",
                 details: {},
             };
@@ -81,8 +89,6 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
             this.#logger.debug(`Error at ${at}:`, exception);
         }
 
-        return await sendError(host, error, originalException, {
-            httpStatusCode: error.details?.httpStatusCode,
-        });
+        return await sendError(host, error, error.statusCode);
     }
 }

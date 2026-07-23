@@ -1,5 +1,6 @@
 export interface ErrorShape {
-    code: string;
+    errorCode: string;
+    statusCode: number;
     message: string;
     details?: Record<string, unknown>;
 }

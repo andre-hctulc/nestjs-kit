@@ -5,26 +5,33 @@ import { mergeOptions, mergeTags } from "./service-error.util.js";
 export class ServiceError extends Error implements ErrorShape {
     static opts = mergeOptions;
 
-    readonly code: string;
+    readonly errorCode: string;
+    readonly statusCode: number;
     readonly details: ServiceErrorDetails;
-    readonly cause: unknown;
 
     constructor(message: string, options: ServiceErrorOptions = {}) {
-        const code = options.code || "HOST_ERROR";
+        const errorCode = options.errorCode || "SERVICE_ERROR";
+        const statusCode = options.statusCode ?? 500;
+
         const details: ServiceErrorDetails = {
             ...options.details,
-            tags: mergeTags(options),
+            errorCode,
+            statusCode,
+            tags: mergeTags({ details: { tags: ["service"] } }, options),
         };
+
         super(message, { cause: options.cause });
-        this.code = code;
+
+        this.errorCode = errorCode;
+        this.statusCode = statusCode;
         this.details = details;
-        this.cause = options.cause;
     }
 
     static isServiceError(error: unknown): error is ErrorShape & Error {
         return (
             error instanceof Error &&
-            typeof (error as any).code === "string" &&
+            typeof (error as any).errorCode === "string" &&
+            typeof (error as any).statusCode === "number" &&
             ((typeof (error as any).details === "object" && (error as any).details !== null) ||
                 (error as any).details === undefined)
         );

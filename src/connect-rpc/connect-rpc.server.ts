@@ -26,7 +26,7 @@ import {
     raceWithSignal,
     resolveFinalTimeout,
 } from "../common/util/system/system.util.js";
-import { getConnectClientDeadline } from "./connect.util.js";
+import { getConnectClientDeadline } from "./connect-system.util.js";
 
 interface ConnectRpcServerOptions {
     address?: string;
@@ -317,6 +317,10 @@ export class ConnectRpcServer
     }
 
     #toConnectError(err: any): ConnectError {
+        if (err instanceof ConnectError) {
+            return err;
+        }
+
         if (err?.name === "TimeoutError") {
             return new ConnectError(err.message, Code.DeadlineExceeded, undefined, undefined, err);
         }
@@ -331,13 +335,9 @@ export class ConnectRpcServer
             );
         }
 
-        // connect error
-        if (err instanceof ConnectError) {
-            return err;
-        }
-
         const message = err?.message || "Internal server error";
-        const details = (err as any)?.details || {};
+        const errorCode = typeof err?.code === "string" ? err.code : undefined;
+        const details = { errorCode, ...(err?.details || {}) };
         const code: number = Number.isInteger(err?.code)
             ? (err.code as number)
             : Number.isInteger(details?.rpcStatusCode)

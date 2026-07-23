@@ -16,7 +16,7 @@ import {
     type AnyGrpcCall,
     type AnyGrpcCallback,
     type WritableGrpcCall,
-} from "./grpc.util.js";
+} from "./grpc-system.util.js";
 import { isObservable } from "rxjs";
 import { isAsyncIterable } from "../rpc/rpc.util.js";
 import {
@@ -192,10 +192,12 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
             };
 
             const onCancelled = () => {
+                // BUG May override original error/abort reason
                 abortController.abort(createAbortError("Request was cancelled by the client"));
             };
 
             const onClose = () => {
+                // BUG May override original error/abort reason
                 abortController.abort(createAbortError("Request was closed"));
             };
 
@@ -426,7 +428,8 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
         }
 
         const message = err?.message ?? "Internal server error";
-        const details = err?.details || {};
+        const errorCode = typeof err?.code === "string" ? err.code : undefined;
+        const details = { errorCode, ...(err?.details || {}) };
         const code = Number.isInteger(err?.code)
             ? (err.code as number)
             : Number.isInteger(details?.rpcStatusCode)

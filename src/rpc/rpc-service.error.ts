@@ -6,27 +6,36 @@ import { mergeOptions, mergeTags } from "../common/errors/service-error.util.js"
 export class RpcServiceError extends RpcException implements ErrorShape {
     static opts = mergeOptions;
 
-    readonly code: string;
-    readonly details: ServiceErrorDetails;
-    readonly cause: unknown = undefined;
-    readonly rpcStatusCode: number;
+    readonly errorCode: string;
+    readonly statusCode: number;
 
-    constructor(message: string, statusCode?: number, options: ServiceErrorOptions = {}) {
-        const code = options.code || "RPC_SERVICE_ERROR";
-        const rpcStatusCode = statusCode ?? -32603;
+    readonly details: ServiceErrorDetails;
+
+    readonly cause: unknown;
+
+    constructor(message: string, options: ServiceErrorOptions = {}) {
+        const errorCode = options.errorCode || "RPC_SERVICE_ERROR";
+        // json rpc error
+        const statusCode = options.statusCode ?? -32603;
+
         const details: ServiceErrorDetails = {
             ...options.details,
-            rpcStatusCode,
-            tags: mergeTags(options),
+            errorCode,
+            statusCode,
+            tags: mergeTags({ details: { tags: ["rpc_service"] } }, options),
         };
+
         super({
             message,
-            code,
+            errorCode,
+            statusCode,
             details,
+            // add rpc status code as code for json rpc compatibility
+            code: statusCode,
         });
-        this.rpcStatusCode = rpcStatusCode;
-        this.code = code;
+
+        this.errorCode = errorCode;
+        this.statusCode = statusCode;
         this.details = details;
-        this.cause = options.cause;
     }
 }

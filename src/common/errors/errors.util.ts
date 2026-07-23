@@ -1,47 +1,47 @@
-import { HttpException, type ArgumentsHost } from "@nestjs/common";
+import { type ArgumentsHost } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
-
-export interface SendErrorOptions {
-    httpStatusCode?: unknown;
-}
+import { isConnectRpcContext, isGrpcContext } from "../../rpc/rpc.util.js";
 
 /**
  * A utility function to send errors in a consistent way across different contexts (HTTP, RPC, WebSockets).
  */
 export async function sendError(
     host: ArgumentsHost,
-    errorObj: any,
-    originalError: unknown,
-    options?: SendErrorOptions,
+    errorObject: any,
+    unmappedStatusCode: number,
 ): Promise<any> {
     const contextType = host.getType();
-    let status: number;
 
     switch (contextType) {
         case "http": {
             const http = host.switchToHttp();
             const res = http.getResponse<FastifyReply>();
-
-            if (originalError instanceof HttpException) {
-                status = originalError.getStatus();
-            } else if (Number.isInteger(options?.httpStatusCode)) {
-                status = options?.httpStatusCode as number;
-            } else {
-                status = 500;
-            }
-
-            res.status(status).header("Content-Type", "application/json").send(errorObj);
+            const mappedStatusCode = mapToHttpStatusCode(unmappedStatusCode);
+            res.status(mappedStatusCode).header("Content-Type", "application/json").send(errorObject);
             break;
         }
         case "rpc":
-            // TODO test: Can nest handle Promise<Observable> return types from RPC handlers?
             const rxjs = await import("rxjs");
-            return rxjs.throwError(() => errorObj);
+            const ctx = host.switchToRpc();
+            const isGrpcLike = isGrpcContext(ctx) || isConnectRpcContext(ctx);
+            let mappedStatusCode: number;
+
+            if (isGrpcLike) {
+                mappedStatusCode = mapToGrpcStatusCode(unmappedStatusCode);
+            } else {
+                mappedStatusCode = mapToJsonRpcStatusCode(unmappedStatusCode);
+            }
+
+            // Add rpc status code to the error object if it doesn't already have one
+            if (errorObject && typeof errorObject === "object") {
+                errorObject.code = mappedStatusCode;
+            }
+
+            return rxjs.throwError(() => errorObject);
         case "ws":
-            // TODO this is a very naive implementation, we should ideally have some way to specify the event name to emit on
             const ws = host.switchToWs();
             const client = ws.getClient();
-            client.emit("error", errorObj);
+            client.emit("error", errorObject);
             break;
     }
 }
@@ -72,6 +72,14 @@ export function getErrorLocationDescription(host: ArgumentsHost): string {
                 return "RPC";
             }
 
+            // Grpc - Metadata carries no method/service info
+            if (isGrpcContext(ctx)) {
+                return "gRPC";
+            }
+            // ConnectRPC - HandlerContext has service and method descriptors
+            else if (isConnectRpcContext(ctx)) {
+                return `ConnectRPC [${ctx.service.typeName}/${ctx.method.name}]`;
+            }
             // TCP, RMQ → getPattern()
             else if ("getPattern" in ctx && typeof ctx.getPattern === "function") {
                 return String(ctx.getPattern());
@@ -94,4 +102,134 @@ export function getErrorLocationDescription(host: ArgumentsHost): string {
         default:
             return "";
     }
+}
+
+function mapToJsonRpcStatusCode(statusCode: number): number {
+    if (statusCode <= 0) {
+        return statusCode; // Already a JSON-RPC status code
+    }
+
+    // grpc
+    else if (statusCode === 0) {
+        return 0; // OK
+    } else if (statusCode === 3) {
+        return -32600; // Invalid Request
+    } else if (statusCode === 16) {
+        return -32601; // Unauthorized
+    } else if (statusCode === 7) {
+        return -32602; // Forbidden
+    } else if (statusCode === 5) {
+        return -32603; // Not Found
+    } else if (statusCode === 6) {
+        return -32604; // Conflict
+    } else if (statusCode === 13) {
+        return -32000; // Internal Server Error
+    }
+
+    // http
+    else if (statusCode >= 200 && statusCode < 300) {
+        return 0; // OK
+    } else if (statusCode === 400) {
+        return -32600; // Invalid Request
+    } else if (statusCode === 401) {
+        return -32601; // Unauthorized
+    } else if (statusCode === 403) {
+        return -32602; // Forbidden
+    } else if (statusCode === 404) {
+        return -32603; // Not Found
+    } else if (statusCode === 409) {
+        return -32604; // Conflict
+    } else if (statusCode >= 500 && statusCode < 600) {
+        return -32000; // Internal Server Error
+    }
+
+    return -32000; // Unknown Error
+}
+
+function mapToGrpcStatusCode(rpcStatusCode: number): number {
+    if (rpcStatusCode >= 0 && rpcStatusCode <= 16) {
+        return rpcStatusCode; // Already a grpc status code
+    }
+
+    // json rpc
+    else if (rpcStatusCode === 0) {
+        return 0; // OK
+    } else if (rpcStatusCode === -32600) {
+        return 3; // Invalid Argument
+    } else if (rpcStatusCode === -32601) {
+        return 16; // Unauthenticated
+    } else if (rpcStatusCode === -32602) {
+        return 7; // Permission Denied
+    } else if (rpcStatusCode === -32603) {
+        return 5; // Not Found
+    } else if (rpcStatusCode === -32604) {
+        return 6; // Already Exists
+    } else if (rpcStatusCode === -32605) {
+        return 3; // Invalid Argument
+    } else if (rpcStatusCode === -32000) {
+        return 13; // Internal Server Error
+    }
+
+    // http
+    else if (rpcStatusCode >= 200 && rpcStatusCode < 300) {
+        return 0; // OK
+    } else if (rpcStatusCode === 400) {
+        return 3; // Invalid Argument
+    } else if (rpcStatusCode === 401) {
+        return 16; // Unauthenticated
+    } else if (rpcStatusCode === 403) {
+        return 7; // Permission Denied
+    } else if (rpcStatusCode === 404) {
+        return 5; // Not Found
+    } else if (rpcStatusCode === 409) {
+        return 6; // Already Exists
+    } else if (rpcStatusCode >= 500 && rpcStatusCode < 600) {
+        return 13; // Internal Server Error
+    }
+
+    return 13; // Unknown Error
+}
+
+function mapToHttpStatusCode(rpcStatusCode: number): number {
+    if (rpcStatusCode >= 200 && rpcStatusCode < 600) {
+        return rpcStatusCode; // Already an HTTP status code
+    }
+
+    // json rpc
+    else if (rpcStatusCode === 0) {
+        return 200; // OK
+    } else if (rpcStatusCode === -32600) {
+        return 400; // Invalid Request
+    } else if (rpcStatusCode === -32601) {
+        return 401; // Unauthorized
+    } else if (rpcStatusCode === -32602) {
+        return 403; // Forbidden
+    } else if (rpcStatusCode === -32603) {
+        return 404; // Not Found
+    } else if (rpcStatusCode === -32604) {
+        return 409; // Conflict
+    } else if (rpcStatusCode === -32605) {
+        return 422; // Unprocessable Entity
+    } else if (rpcStatusCode === -32000) {
+        return 500; // Internal Server Error
+    }
+
+    // grpc
+    else if (rpcStatusCode === 0) {
+        return 200; // OK
+    } else if (rpcStatusCode === 3) {
+        return 400; // Invalid Argument
+    } else if (rpcStatusCode === 16) {
+        return 401; // Unauthenticated
+    } else if (rpcStatusCode === 7) {
+        return 403; // Permission Denied
+    } else if (rpcStatusCode === 5) {
+        return 404; // Not Found
+    } else if (rpcStatusCode === 6) {
+        return 409; // Already Exists
+    } else if (rpcStatusCode === 13) {
+        return 500; // Internal Server Error
+    }
+
+    return 500; // Unknown Error
 }

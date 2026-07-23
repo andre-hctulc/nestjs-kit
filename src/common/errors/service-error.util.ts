@@ -14,8 +14,10 @@ export function mergeOptions(
         details: {
             ...options1?.details,
             ...options2?.details,
+            private: options2?.details?.private || options1?.details?.private,
             tags: mergeTags(options1, options2),
         },
-        code: options2?.code || options1?.code,
+        errorCode: options2?.errorCode || options1?.errorCode,
+        statusCode: options2?.statusCode ?? options1?.statusCode,
     };
 }

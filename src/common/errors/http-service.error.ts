@@ -6,26 +6,33 @@ import { mergeOptions, mergeTags } from "./service-error.util.js";
 export class HttpServiceError extends HttpException implements ErrorShape {
     static opts = mergeOptions;
 
-    readonly code: string;
+    readonly errorCode: string;
+    readonly statusCode: number;
     readonly details: ServiceErrorDetails;
 
-    constructor(message: string, statusCode: number, options: ServiceErrorOptions = {}) {
-        const code = options.code || "HOST_ERROR";
+    constructor(message: string, options: ServiceErrorOptions = {}) {
+        const errorCode = options.errorCode || "HTTP_SERVICE_ERROR";
+        const statusCode = options.statusCode ?? 500;
+
         const details: ServiceErrorDetails = {
             ...options.details,
-            httpStatusCode: statusCode,
-            tags: mergeTags(options),
+            errorCode,
+            statusCode,
+            tags: mergeTags({ details: { tags: ["http_service"] } }, options),
         };
+
         super(
             {
                 message,
-                code,
+                statusCode,
+                errorCode,
                 details,
             },
             statusCode,
             { cause: options.cause },
         );
-        this.code = code;
+        this.errorCode = errorCode;
+        this.statusCode = statusCode;
         this.details = details;
     }
 }

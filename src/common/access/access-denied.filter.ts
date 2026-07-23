@@ -13,11 +13,12 @@ export class AccessDeniedExceptionFilter implements ExceptionFilter<AccessDenied
         this.#logger.debug(`Access denied (${contextType})`, exception);
 
         const errorObj: ErrorShape = {
-            details: {},
             message: exception.message,
-            code: "ACCESS_DENIED",
+            errorCode: "ACCESS_DENIED",
+            statusCode: 403,
+            details: {},
         };
 
-        return await sendError(host, errorObj, exception, { httpStatusCode: 403 });
+        return await sendError(host, errorObj, errorObj.statusCode);
     }
 }

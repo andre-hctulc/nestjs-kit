@@ -1,27 +1,41 @@
-import { WsException } from "@nestjs/websockets";
+import { RpcException } from "@nestjs/microservices";
 import type { ErrorShape } from "../common/errors/error-shape.interface.js";
 import type { ServiceErrorDetails, ServiceErrorOptions } from "../common/index.js";
 import { mergeOptions, mergeTags } from "../common/errors/service-error.util.js";
 
-export class WsServiceError extends WsException implements ErrorShape {
+export class WsServiceException extends RpcException implements ErrorShape {
     static opts = mergeOptions;
 
-    readonly code: string;
+    readonly errorCode: string;
+    readonly statusCode: number;
+
     readonly details: ServiceErrorDetails;
-    readonly cause: unknown = undefined;
+
+    readonly cause: unknown;
 
     constructor(message: string, options: ServiceErrorOptions = {}) {
-        const code = options.code || "HOST_ERROR";
+        const errorCode = options.errorCode || "WS_SERVICE_ERROR";
+        // json rpc error
+        const statusCode = options.statusCode ?? -32603;
+
         const details: ServiceErrorDetails = {
             ...options.details,
-            tags: mergeTags(options),
+            errorCode,
+            statusCode,
+            tags: mergeTags({ details: { tags: ["ws_service"] } }, options),
         };
+
         super({
             message,
-            code,
+            errorCode,
+            statusCode,
             details,
+            // add rpc status code as code for json rpc compatibility
+            code: statusCode,
         });
-        this.code = code;
+
+        this.errorCode = errorCode;
+        this.statusCode = statusCode;
         this.details = details;
     }
 }

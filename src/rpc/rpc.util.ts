@@ -24,23 +24,31 @@ export function createRpcErrorResponse(data: RpcErrorResponseInput): RpcErrorRes
     };
 }
 
+export function isGrpcContext(context: unknown): context is Metadata {
+    return (
+        typeof (context as Metadata).add === "function" &&
+        typeof (context as Metadata).get === "function" &&
+        typeof (context as Metadata).getMap === "function"
+    );
+}
+
 export function assertGrpcContext(context: unknown): Metadata {
-    if (
-        typeof (context as Metadata).add !== "function" ||
-        typeof (context as Metadata).get !== "function" ||
-        typeof (context as Metadata).getMap !== "function"
-    ) {
+    if (!isGrpcContext(context)) {
         throw new Error("Not a grpc Metadata context");
     }
     return context as Metadata;
 }
 
+export function isConnectRpcContext(context: unknown): context is HandlerContext {
+    return (
+        (context as HandlerContext)?.requestHeader instanceof Headers &&
+        (context as HandlerContext)?.service &&
+        typeof (context as HandlerContext)?.service === "object"
+    );
+}
+
 export function assertConnectRpcContext(context: unknown): HandlerContext {
-    if (
-        !((context as HandlerContext)?.requestHeader instanceof Headers) ||
-        !(context as HandlerContext)?.service ||
-        typeof (context as HandlerContext)?.service !== "object"
-    ) {
+    if (!isConnectRpcContext(context)) {
         throw new Error("Not a connect rpc HandlerContext");
     }
     return context as HandlerContext;
