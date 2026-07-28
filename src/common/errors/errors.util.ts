@@ -146,7 +146,7 @@ function mapToJsonRpcStatusCode(statusCode: number): number {
     return -32000; // Unknown Error
 }
 
-function mapToGrpcStatusCode(rpcStatusCode: number): number {
+export function mapToGrpcStatusCode(rpcStatusCode: number): number {
     if (rpcStatusCode >= 0 && rpcStatusCode <= 16) {
         return rpcStatusCode; // Already a grpc status code
     }

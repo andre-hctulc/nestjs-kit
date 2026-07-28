@@ -27,6 +27,7 @@ import {
     resolveFinalTimeout,
 } from "../common/util/system/system.util.js";
 import { getConnectClientDeadline } from "./connect-system.util.js";
+import { mapToGrpcStatusCode } from "../common/index.js";
 
 interface ConnectRpcServerOptions {
     address?: string;
@@ -335,17 +336,13 @@ export class ConnectRpcServer
             );
         }
 
-        const message = err?.message || "Internal server error";
-        const errorCode = typeof err?.code === "string" ? err.code : undefined;
-        const details = { errorCode, ...(err?.details || {}) };
-        const code: number = Number.isInteger(err?.code)
-            ? (err.code as number)
-            : Number.isInteger(details?.rpcStatusCode)
-              ? (details.rpcStatusCode as number)
-              : Code.Internal;
+        const message = err?.message || "Internal connect rpc service error";
+        const details = err.details && typeof err.details === "object" ? err.details : {};
+        const statusCode =
+            typeof err?.statusCode === "number" ? mapToGrpcStatusCode(err.statusCode) : Code.Internal;
         const outgoingDetails = this.#toOutgoingDetails(details);
 
-        return new ConnectError(message, code, undefined, outgoingDetails, err);
+        return new ConnectError(message, statusCode, undefined, outgoingDetails, err);
     }
 
     #toOutgoingDetails(details: unknown) {

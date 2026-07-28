@@ -16,8 +16,6 @@ export class HttpServiceError extends HttpException implements ErrorShape {
 
         const details: ServiceErrorDetails = {
             ...options.details,
-            errorCode,
-            statusCode,
             tags: mergeTags({ details: { tags: ["http_service"] } }, options),
         };
 

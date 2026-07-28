@@ -20,6 +20,7 @@ export class RpcServiceError extends RpcException implements ErrorShape {
 
         const details: ServiceErrorDetails = {
             ...options.details,
+            // add codes to detail, otherwise they might get lost in the rpc transport layer
             errorCode,
             statusCode,
             tags: mergeTags({ details: { tags: ["rpc_service"] } }, options),

@@ -25,6 +25,7 @@ import {
     raceWithSignal,
     resolveFinalTimeout,
 } from "../common/util/system/system.util.js";
+import { mapToGrpcStatusCode } from "../common/index.js";
 
 /** 2min in milliseconds */
 const DEFAULT_TIMEOUT = 120_000;
@@ -427,21 +428,17 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
             return err;
         }
 
-        const message = err?.message ?? "Internal server error";
-        const errorCode = typeof err?.code === "string" ? err.code : undefined;
-        const details = { errorCode, ...(err?.details || {}) };
-        const code = Number.isInteger(err?.code)
-            ? (err.code as number)
-            : Number.isInteger(details?.rpcStatusCode)
-              ? (details.rpcStatusCode as number)
-              : status.INTERNAL;
+        const message = err?.message || "Internal grpc service error";
+        const details = err.details && typeof err.details === "object" ? err.details : {};
+        const statusCode =
+            typeof err?.statusCode === "number" ? mapToGrpcStatusCode(err.statusCode) : status.INTERNAL;
 
         const metadata = new Metadata();
         const detailsJson = JSON.stringify(details);
         metadata.set("x-error-details", detailsJson);
 
         const mapped = Object.assign(new Error(message), {
-            code,
+            code: statusCode,
             details: detailsJson,
             metadata,
         });
