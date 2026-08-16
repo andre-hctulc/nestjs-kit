@@ -1,4 +1,5 @@
 # TODO
 
--   fastify multipart decorator param for config (= Busboy config - file maxSize etc)
--   access role guards
+- fastify multipart decorator param for config (= Busboy config - file maxSize etc)
+- access role guards
+- Optional peer deps, instead of dev deps

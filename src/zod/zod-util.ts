@@ -1,4 +1,5 @@
 import { z, ZodArray, ZodNullable, ZodObject, ZodOptional, ZodType } from "zod";
+import type { ServiceErrorDetails } from "../common/index.js";
 
 function transformFromString(schema: ZodType, v: unknown) {
     if (typeof v !== "string") {
@@ -100,4 +101,14 @@ export function zodCoerceQuery<T extends Record<string, ZodType>>(schema: ZodObj
         newShape[key] = zodCoerceQueryParam(shape[key]);
     }
     return z.object(newShape) as ZodObject<T>;
+}
+
+export function getZodErrorDetails(zodError: z.ZodError): ServiceErrorDetails {
+    return {
+        issues: zodError.issues.map((issue) => ({
+            path: issue.path,
+            message: issue.message,
+            code: issue.code,
+        })),
+    };
 }
