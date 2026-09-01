@@ -1,6 +1,5 @@
-import type { ZodError } from "zod";
+import { flattenError, type ZodError } from "zod";
 import type { ErrorShape } from "../common/errors/error-shape.interface.js";
-import { getZodErrorDetails } from "./zod-util.js";
 
 export class ZPipeError extends TypeError implements ErrorShape {
     readonly errorCode = "PARAM_VALIDATION_FAILED";
@@ -9,6 +8,6 @@ export class ZPipeError extends TypeError implements ErrorShape {
 
     constructor(readonly zodError: ZodError) {
         super("Validation failed");
-        this.details = getZodErrorDetails(zodError);
+        this.details = flattenError(zodError);
     }
 }

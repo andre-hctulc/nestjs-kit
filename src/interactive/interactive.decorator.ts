@@ -1,5 +1,3 @@
-import "reflect-metadata";
-
 export interface InteractiveArgumentDefinition {
     flags: string;
     description?: string;

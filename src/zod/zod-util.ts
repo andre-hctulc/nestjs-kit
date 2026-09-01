@@ -102,13 +102,3 @@ export function zodCoerceQuery<T extends Record<string, ZodType>>(schema: ZodObj
     }
     return z.object(newShape) as ZodObject<T>;
 }
-
-export function getZodErrorDetails(zodError: z.ZodError): ServiceErrorDetails {
-    return {
-        issues: zodError.issues.map((issue) => ({
-            path: issue.path,
-            message: issue.message,
-            code: issue.code,
-        })),
-    };
-}
