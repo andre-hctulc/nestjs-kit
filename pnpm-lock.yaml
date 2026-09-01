@@ -9,10 +9,10 @@ importers:
   .:
     dependencies:
       '@nestjs/common':
-        specifier: ^11
+        specifier: '12'
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/core':
-        specifier: ^11
+        specifier: ^12
         version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@12.0.1)(@nestjs/websockets@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       cookie:
         specifier: ^1.0.2
@@ -37,10 +37,10 @@ importers:
         specifier: ^1.14.4
         version: 1.14.4
       '@nestjs/microservices':
-        specifier: ^12.0.1
+        specifier: ^12
         version: 12.0.1(@grpc/grpc-js@1.14.4)(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(@nestjs/websockets@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/websockets':
-        specifier: ^12.0.1
+        specifier: ^12
         version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@types/busboy':
         specifier: ^1.5.4
