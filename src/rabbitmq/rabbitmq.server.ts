@@ -48,7 +48,7 @@ export interface RabbitMqHandlerOptions {
 }
 
 export interface RabbitMqConnection {
-    address: string;
+    url: string;
     options?: SocketOptions;
     /** The default exchange to use for this connection. */
     exchange?: string;
@@ -105,7 +105,7 @@ export class RabbitMqServer
         super();
         this.#config = config;
 
-        if (typeof config.connection.address === "string") {
+        if (typeof config.connection.url === "string") {
             this.#connections = { default: config.connection as RabbitMqConnection };
         } else {
             this.#connections = config.connection as Record<string, RabbitMqConnection>;
@@ -144,7 +144,7 @@ export class RabbitMqServer
     }
 
     async #setupChannelModel(name: string, socket: RabbitMqConnection) {
-        const channelModel = await connect(socket.address, socket.options);
+        const channelModel = await connect(socket.url, socket.options);
         this.#channelModels.set(name, channelModel);
 
         channelModel.on("close", () => {

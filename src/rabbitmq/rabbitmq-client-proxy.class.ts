@@ -31,7 +31,7 @@ export class RabbitMqClientProxy extends ClientProxy {
             return this.#channel;
         }
 
-        const address = this.#config.address ?? "amqp://localhost";
+        const address = this.#config.url ?? "amqp://localhost";
         const options = this.#config.options;
         this.#channelModel = await connect(address, options);
         this.#channel = await this.#channelModel.createChannel();
