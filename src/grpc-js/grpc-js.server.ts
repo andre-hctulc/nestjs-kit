@@ -36,9 +36,9 @@ const DEFAULT_TIMEOUT = 120_000;
 const MAX_TIMEOUT = 24 * 60 * 60 * 1000;
 
 export interface GrpcJsServerConfig {
-    address?: string;
+    address: string;
+    services: Record<string, ServiceDefinition>;
     serverOptions?: GrpcServerOptions;
-    services?: Record<string, ServiceDefinition>;
     timeout?: number;
     credentials?: ServerCredentials;
 }
@@ -99,9 +99,9 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
     #config: GrpcJsServerConfig;
     #eventListeners: Map<GrpcJsServerEventType, Set<(...args: any[]) => any>> = new Map();
 
-    constructor(config: GrpcJsServerConfig = {}) {
+    constructor(config: GrpcJsServerConfig) {
         super();
-        this.#address = config.address ?? "0.0.0.0:50051";
+        this.#address = config.address;
         this.#config = config;
 
         const timeoutInterceptor = createTimeoutInterceptor(this.#config.timeout ?? DEFAULT_TIMEOUT);
@@ -111,6 +111,10 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
         };
 
         this.#server = new GrpcServer(serverOptions);
+
+        if (!this.#config.services || Object.keys(this.#config.services).length === 0) {
+            this.#logger.warn("No gRPC service definitions provided. No methods will be registered.");
+        }
     }
 
     override unwrap<T>(): T {

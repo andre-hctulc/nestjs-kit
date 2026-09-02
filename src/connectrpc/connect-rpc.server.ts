@@ -33,8 +33,8 @@ import { getConnectClientDeadline } from "./connect-system.util.js";
 import { mapToGrpcStatusCode } from "../common/index.js";
 
 export interface ConnectRpcServerConfig {
-    address?: string;
-    services?: DescService[];
+    address: string;
+    service: DescService | DescService[];
     timeout?: number;
     serverOptions?: ServerOptions;
     adapterOptions?: Partial<ConnectNodeAdapterOptions>;
@@ -74,11 +74,15 @@ export class ConnectRpcServer
     #config: ConnectRpcServerConfig;
     #address: string;
     #server: http2.Http2Server | undefined;
-
-    constructor(config: ConnectRpcServerConfig = {}) {
+    #desc: DescService[];
+    constructor(config: ConnectRpcServerConfig) {
         super();
         this.#address = config.address ?? "0.0.0.0:50051";
         this.#config = config;
+        this.#desc = Array.isArray(config.service) ? config.service : config.service ? [config.service] : [];
+        if (!this.#desc.length) {
+            this.#logger.warn("No Connect service descriptors provided. No methods will be registered.");
+        }
     }
 
     override unwrap<T>(): T {
@@ -132,7 +136,7 @@ export class ConnectRpcServer
     }
 
     #registerServices(router: ConnectRouter) {
-        for (const serviceDesc of this.#config.services ?? []) {
+        for (const serviceDesc of this.#desc) {
             const impl: Record<string, any> = {};
 
             for (const method of serviceDesc.methods) {

@@ -6,7 +6,7 @@ import { defer, mergeMap, Observable } from "rxjs";
 
 export interface ConnectRpcClientProxyConfig {
     transport: { customTransport: Transport } | ConnectTransportOptions;
-    services: DescService[];
+    services: DescService | DescService[];
 }
 
 export class ConnectRpcClientProxy extends ClientProxy {
@@ -14,10 +14,15 @@ export class ConnectRpcClientProxy extends ClientProxy {
     #clients = new Map<string, Record<string, Function>>();
     #transport: Transport | undefined;
     #connectPromise: Promise<void> | undefined;
+    #desc: DescService[];
 
     constructor(config: ConnectRpcClientProxyConfig) {
         super();
         this.#config = config;
+        this.#desc = Array.isArray(config.services) ? config.services : [config.services];
+        if (!this.#desc || this.#desc.length === 0) {
+            throw new Error("No Connect service definitions provided.");
+        }
 
         this.initializeSerializer({});
         this.initializeDeserializer({});
@@ -126,7 +131,7 @@ export class ConnectRpcClientProxy extends ClientProxy {
         let client = this.#clients.get(serviceName);
         if (client) return client;
 
-        const service = this.#config.services.find(({ typeName }) => typeName === serviceName);
+        const service = this.#desc.find(({ typeName }) => typeName === serviceName);
         if (!this.#transport) {
             throw new Error(`No Connect transport configured`);
         }

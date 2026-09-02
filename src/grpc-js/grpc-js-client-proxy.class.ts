@@ -30,8 +30,14 @@ export class GrpcJsClientProxy extends ClientProxy {
     constructor(config: GrpcJsClientProxyConfig) {
         super();
         this.#config = config;
+        
+        if (!this.#config.services || Object.keys(this.#config.services).length === 0) {
+            throw new Error("No gRPC service definitions provided.");
+        }
+
         this.initializeSerializer({});
         this.initializeDeserializer({});
+
     }
 
     async connect(): Promise<void> {}
