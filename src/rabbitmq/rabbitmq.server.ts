@@ -19,44 +19,62 @@ import {
     resolveFinalTimeout,
 } from "../common/util/system/system.util.js";
 import { toErrorShape } from "../common/index.js";
+import { normalizeRabbitPattern } from "./rabbit-system.util.js";
+
+export interface RabbitMqDlOptions {
+    /**
+     * The default dead letter exchange to use for this connection.
+     * Defaults to the exchange name if not specified.
+     */
+    dlx?: string;
+    /** Fixed dlq */
+    dlq?: string;
+    dlxOptions?: Options.AssertExchange;
+    dlqOptions?: Options.AssertQueue;
+    dlqPublishOptions?: Options.Publish;
+}
+
+export interface RabbitMqSetupOptions {
+    exchangeOptions?: Options.AssertExchange;
+    queueOptions?: Options.AssertQueue;
+    replyPublishOptions?: Options.Publish;
+    dl?: RabbitMqDlOptions | false;
+}
 
 export interface RabbitMqHandlerOptions {
-    exchange?: Options.AssertExchange;
-    queue?: Options.AssertQueue;
-    dlq?: Options.AssertQueue;
-    replyPublish?: Options.Publish;
-    dlqPublish?: Options.Publish;
+    /** Handler level setup options */
+    setup?: RabbitMqSetupOptions;
+    timeout?: number;
 }
 
 export interface RabbitMqConnection {
     address: string;
     options?: SocketOptions;
+    /** The default exchange to use for this connection. */
+    exchange?: string;
+    /** Connection level setup options. */
+    setup?: RabbitMqSetupOptions;
 }
 
 export interface RabbitMqServerConfig {
     connections?: Record<string, RabbitMqConnection>;
-    timeout?: number;
-    /**
-     * Enable dead letter queue (DLQ) support for all queue
-     * @default true
-     */
-    dlq?: boolean;
+    /** Shared setup options */
+    setup?: RabbitMqSetupOptions;
     /**
      * Default handler options.
-     * Merged with handler specified options.
+     * Merged with handler level options.
      */
-    handlerOptions?: RabbitMqHandlerOptions;
+    handlerOptions?: Omit<RabbitMqHandlerOptions, "setup">;
 }
 
 type MessageHandler = (...args: any[]) => any;
 
 export interface RabbitMqMethodPattern {
     exchange?: string;
-    socket?: string;
+    connection?: string;
     routingKey: string;
     queue?: string;
-    dlq?: string | false;
-    options?: RabbitMqHandlerOptions & { timeout?: number };
+    options?: RabbitMqHandlerOptions;
 }
 
 export interface RabbitMqStreamResponse {
@@ -94,34 +112,7 @@ export class RabbitMqServer
     }
 
     protected override normalizePattern(pattern: MsPattern): string {
-        let obj: Record<string, any> = {};
-
-        if (typeof pattern === "string") {
-            let exchange: string | undefined;
-            let routingKey: string | undefined;
-
-            const parts = pattern.split(".");
-            if (parts.length === 1) {
-                routingKey = parts[0];
-            } else if (parts.length >= 2) {
-                exchange = parts[0];
-                routingKey = parts.slice(1).join(".");
-            }
-            obj = { exchange, routingKey, socket: "default" };
-        } else if (typeof pattern === "object" && pattern !== null && "routingKey" in pattern) {
-            obj = pattern;
-        } else {
-            return JSON.stringify({ routingKey: String(pattern) } satisfies RabbitMqMethodPattern);
-        }
-
-        return JSON.stringify({
-            exchange: obj.exchange,
-            routingKey: obj.routingKey,
-            queue: obj.queue,
-            dlq: obj.dlq,
-            socket: obj.socket || "default",
-            options: obj.options,
-        } satisfies RabbitMqMethodPattern);
+        return normalizeRabbitPattern(pattern);
     }
 
     async listen(callback: () => void) {
@@ -163,34 +154,77 @@ export class RabbitMqServer
         });
     }
 
+    #getDefaultConnectionName(): string {
+        const connectionNames = Object.keys(this.#connections);
+        if (connectionNames.length === 0) {
+            return "default";
+        }
+        return connectionNames[0];
+    }
+
     async #registerHandler(pattern: string, handler: MessageHandler) {
         const route = this.#parsePattern(pattern);
 
         const options = this.#resolveHandlerOptions(route.options);
 
-        const exchange = route.exchange ?? "default";
-        const socketName = route.socket ?? "default";
+        const connectionName = route.connection ?? this.#getDefaultConnectionName();
         const routingKey = route.routingKey ?? "";
-        const queue = route.queue ?? `${exchange}.${routingKey}`;
 
-        const channelModel = this.#channelModels.get(socketName);
+        const channelModel = this.#channelModels.get(connectionName);
+        const connection = this.#connections[connectionName];
         if (!channelModel) {
-            throw new Error(`No RabbitMQ address configured for exchange: ${exchange}`);
+            throw new Error(`No RabbitMQ address configured for connection: ${connectionName}`);
+        }
+        if (!connection) {
+            throw new Error(`No RabbitMQ connection configured for connection: ${connectionName}`);
         }
 
+        const exchange = route.exchange ?? connection.exchange ?? "default";
+        const queue = route.queue ?? `${exchange}.${routingKey}`;
+        const setup = this.#resolveSetupOptions(connection, options.setup);
+        const dl = setup.dl === false ? undefined : setup.dl;
+        const dlq = dl ? (dl.dlq ?? `${queue}.dlq`) : undefined;
+        const dlx = dl ? (dl.dlx ?? exchange) : undefined;
+
         const channel = await channelModel.createChannel();
-        await channel.assertExchange(exchange, "topic", { durable: true, ...options.exchange });
-        await channel.assertQueue(queue, { durable: true, ...options.queue });
+        await channel.assertExchange(exchange, "topic", { durable: true, ...setup.exchangeOptions });
+        if (dlx) {
+            await channel.assertExchange(dlx, "topic", { durable: true, ...dl?.dlxOptions });
+        }
+        await channel.assertQueue(queue, {
+            durable: true,
+            ...setup.queueOptions,
+            arguments: {
+                ...setup.queueOptions?.arguments,
+                ...(dlx
+                    ? {
+                          "x-dead-letter-exchange": dlx,
+                          "x-dead-letter-routing-key": dlq,
+                      }
+                    : {}),
+            },
+        });
         await channel.bindQueue(queue, exchange, routingKey);
-        const dlq = this.#resolveDlq(route, queue);
-        const dlqChannel = dlq ? await channelModel.createConfirmChannel() : undefined;
+        const dlqChannel = dlq && !dlx ? await channelModel.createConfirmChannel() : undefined;
         if (dlq) {
-            await channel.assertQueue(dlq, { durable: true, ...options.dlq });
-            await channel.bindQueue(dlq, exchange, dlq);
+            await channel.assertQueue(dlq, { durable: true, ...dl?.dlqOptions });
+            await channel.bindQueue(dlq, dlx ?? exchange, dlq);
         }
         await channel.consume(
             queue,
-            (message) => this.#handleMessage(channel, dlqChannel, handler, message, exchange, dlq, options),
+            (message) =>
+                this.#handleMessage(
+                    channel,
+                    dlqChannel,
+                    handler,
+                    message,
+                    exchange,
+                    dlx,
+                    dlq,
+                    dl,
+                    setup,
+                    options,
+                ),
             {
                 noAck: false,
             },
@@ -205,7 +239,10 @@ export class RabbitMqServer
         handler: MessageHandler,
         message: ConsumeMessage | null,
         exchange: string,
+        dlx: string | undefined,
         dlq: string | undefined,
+        dl: RabbitMqDlOptions | undefined,
+        setup: RabbitMqSetupOptions,
         handlerOptions: RabbitMqHandlerOptions & { timeout?: number },
     ) {
         if (!message) {
@@ -216,7 +253,7 @@ export class RabbitMqServer
 
         const timeout = resolveFinalTimeout(
             undefined,
-            handlerOptions.timeout ?? this.#config.timeout ?? DEFAULT_TIMEOUT,
+            handlerOptions.timeout ?? DEFAULT_TIMEOUT,
             MAX_TIMEOUT,
         );
 
@@ -228,43 +265,37 @@ export class RabbitMqServer
 
             if (isAsyncGenerator(result) || isGenerator(result)) {
                 for await (const value of iterateWithSignal(result, signal)) {
-                    this.#sendDirectReply(
-                        channel,
-                        message,
-                        { __rabbit_stream_chunk__: value },
-                        handlerOptions,
-                    );
+                    this.#sendDirectReply(channel, message, { __rabbit_stream_chunk__: value }, setup);
                 }
                 this.#sendDirectReply(
                     channel,
                     message,
                     { __rabbit_stream_chunk__: null, __rabbit_stream_end__: true },
-                    handlerOptions,
+                    setup,
                 );
             } else if (isObservable(result)) {
                 await this.#awaitObservable(result, signal, (value) =>
-                    this.#sendDirectReply(
-                        channel,
-                        message,
-                        { __rabbit_stream_chunk__: value },
-                        handlerOptions,
-                    ),
+                    this.#sendDirectReply(channel, message, { __rabbit_stream_chunk__: value }, setup),
                 );
                 this.#sendDirectReply(
                     channel,
                     message,
                     { __rabbit_stream_chunk__: null, __rabbit_stream_end__: true },
-                    handlerOptions,
+                    setup,
                 );
             } else if (result !== undefined) {
-                this.#sendDirectReply(channel, message, result, handlerOptions);
+                this.#sendDirectReply(channel, message, result, setup);
             }
             channel.ack(message);
         } catch (err) {
             this.#logger.error(`Error at ${handlerLabel}`, err);
+            if (dlx) {
+                channel.nack(message, false, false);
+                return;
+            }
             if (dlq && dlqChannel) {
                 try {
-                    const publishOptions = handlerOptions.dlqPublish;
+                    const publishOptions = dl?.dlqPublishOptions;
                     dlqChannel.publish(exchange, dlq, message.content, {
                         persistent: true,
                         contentType: message.properties.contentType,
@@ -289,12 +320,60 @@ export class RabbitMqServer
         }
     }
 
-    #resolveDlq(route: RabbitMqMethodPattern, queue: string): string | undefined {
-        if (this.#config.dlq === false || route.dlq === false) {
-            return undefined;
-        }
+    #resolveSetupOptions(
+        connection: RabbitMqConnection,
+        handlerSetup: RabbitMqHandlerOptions["setup"],
+    ): RabbitMqSetupOptions {
+        const serverSetup = this.#config.setup;
+        const connectionSetup = connection.setup;
+        const serverDl = serverSetup?.dl;
+        const connectionDl = connectionSetup?.dl;
+        const handlerDl = handlerSetup?.dl;
+        const dl =
+            !serverDl || connectionDl === false || handlerDl === false
+                ? undefined
+                : {
+                      ...serverDl,
+                      ...connectionDl,
+                      ...handlerDl,
+                      dlxOptions: {
+                          ...serverDl.dlxOptions,
+                          ...connectionDl?.dlxOptions,
+                          ...handlerDl?.dlxOptions,
+                      },
+                      dlqOptions: {
+                          ...serverDl.dlqOptions,
+                          ...connectionDl?.dlqOptions,
+                          ...handlerDl?.dlqOptions,
+                      },
+                      dlqPublishOptions: {
+                          ...serverDl.dlqPublishOptions,
+                          ...connectionDl?.dlqPublishOptions,
+                          ...handlerDl?.dlqPublishOptions,
+                      },
+                  };
 
-        return route.dlq ?? `${queue}.dlq`;
+        return {
+            ...serverSetup,
+            ...connectionSetup,
+            ...handlerSetup,
+            exchangeOptions: {
+                ...serverSetup?.exchangeOptions,
+                ...connectionSetup?.exchangeOptions,
+                ...handlerSetup?.exchangeOptions,
+            },
+            queueOptions: {
+                ...serverSetup?.queueOptions,
+                ...connectionSetup?.queueOptions,
+                ...handlerSetup?.queueOptions,
+            },
+            replyPublishOptions: {
+                ...serverSetup?.replyPublishOptions,
+                ...connectionSetup?.replyPublishOptions,
+                ...handlerSetup?.replyPublishOptions,
+            },
+            dl,
+        };
     }
 
     #resolveHandlerOptions(
@@ -304,11 +383,7 @@ export class RabbitMqServer
         return {
             ...defaults,
             ...options,
-            exchange: { ...defaults?.exchange, ...options?.exchange },
-            queue: { ...defaults?.queue, ...options?.queue },
-            dlq: { ...defaults?.dlq, ...options?.dlq },
-            replyPublish: { ...defaults?.replyPublish, ...options?.replyPublish },
-            dlqPublish: { ...defaults?.dlqPublish, ...options?.dlqPublish },
+            setup: options?.setup,
         };
     }
 
@@ -316,7 +391,7 @@ export class RabbitMqServer
         channel: Channel,
         message: ConsumeMessage,
         result: unknown,
-        handlerOptions: RabbitMqHandlerOptions,
+        setup: RabbitMqSetupOptions,
     ) {
         const { replyTo, correlationId } = message.properties;
         if (!replyTo) {
@@ -324,7 +399,7 @@ export class RabbitMqServer
         }
 
         channel.sendToQueue(replyTo, Buffer.from(JSON.stringify(result)), {
-            ...handlerOptions.replyPublish,
+            ...setup.replyPublishOptions,
             contentType: "application/json",
             correlationId,
         });
