@@ -25,7 +25,7 @@ export function createRpcErrorResponse(data: RpcErrorResponseInput): RpcErrorRes
     };
 }
 
-export function isGrpcContext(context: unknown): context is Metadata {
+export function isGrpcJsContext(context: unknown): context is Metadata {
     return (
         typeof (context as Metadata).add === "function" &&
         typeof (context as Metadata).get === "function" &&
@@ -33,14 +33,14 @@ export function isGrpcContext(context: unknown): context is Metadata {
     );
 }
 
-export function assertGrpcContext(context: unknown): Metadata {
-    if (!isGrpcContext(context)) {
+export function assertGrpcJsContext(context: unknown): Metadata {
+    if (!isGrpcJsContext(context)) {
         throw new Error("Not a grpc Metadata context");
     }
     return context as Metadata;
 }
 
-export function isConnectContext(context: unknown): context is HandlerContext {
+export function isConnectRpcContext(context: unknown): context is HandlerContext {
     return (
         (context as HandlerContext)?.requestHeader instanceof Headers &&
         (context as HandlerContext)?.service &&
@@ -48,14 +48,14 @@ export function isConnectContext(context: unknown): context is HandlerContext {
     );
 }
 
-export function assertConnectContext(context: unknown): HandlerContext {
-    if (!isConnectContext(context)) {
+export function assertConnectRpcContext(context: unknown): HandlerContext {
+    if (!isConnectRpcContext(context)) {
         throw new Error("Not a connect rpc HandlerContext");
     }
     return context as HandlerContext;
 }
 
-export function isRabbitContext(context: unknown): context is ConsumeMessage {
+export function isRabbitMqContext(context: unknown): context is ConsumeMessage {
     return (
         !!context &&
         typeof (context as ConsumeMessage).content === "object" &&
@@ -64,8 +64,8 @@ export function isRabbitContext(context: unknown): context is ConsumeMessage {
     );
 }
 
-export function assertRabbitContext(context: unknown): ConsumeMessage {
-    if (!isRabbitContext(context)) {
+export function assertRabbitMqContext(context: unknown): ConsumeMessage {
+    if (!isRabbitMqContext(context)) {
         throw new Error("Not a RabbitMQ ConsumeMessage context");
     }
     return context as ConsumeMessage;

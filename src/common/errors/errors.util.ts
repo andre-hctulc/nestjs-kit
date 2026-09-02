@@ -1,6 +1,6 @@
 import { type ArgumentsHost } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { isConnectContext, isGrpcContext } from "../../rpc/rpc.util.js";
+import { isConnectRpcContext, isGrpcJsContext } from "../../rpc/rpc.util.js";
 import type { ErrorShape } from "./error-shape.interface.js";
 
 /**
@@ -24,7 +24,7 @@ export async function sendError(
         case "rpc":
             const rxjs = await import("rxjs");
             const ctx = host.switchToRpc();
-            const isGrpcLike = isGrpcContext(ctx) || isConnectContext(ctx);
+            const isGrpcLike = isGrpcJsContext(ctx) || isConnectRpcContext(ctx);
             let mappedStatusCode: number;
 
             if (isGrpcLike) {
@@ -74,11 +74,11 @@ export function getErrorLocationDescription(host: ArgumentsHost): string {
             }
 
             // Grpc - Metadata carries no method/service info
-            if (isGrpcContext(ctx)) {
+            if (isGrpcJsContext(ctx)) {
                 return "gRPC";
             }
             // ConnectRPC - HandlerContext has service and method descriptors
-            else if (isConnectContext(ctx)) {
+            else if (isConnectRpcContext(ctx)) {
                 return `ConnectRPC [${ctx.service.typeName}/${ctx.method.name}]`;
             }
             // TCP, RMQ → getPattern()
