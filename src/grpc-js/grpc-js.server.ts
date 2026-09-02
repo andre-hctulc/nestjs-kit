@@ -55,7 +55,7 @@ type GrpcJsServerEventMap = {
 };
 
 type GrpcJsServerEventType = string & keyof GrpcJsServerEventMap;
-type GrpcMessageHandler = (...args: any[]) => any;
+type GrpcMessageHandler = ((...args: any[]) => any) & { isEventHandler?: boolean };
 
 function createTimeoutInterceptor(timeout: number): ServerInterceptor {
     return (_methodDescriptor, call) => {
@@ -117,7 +117,13 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
         return this.#server as T;
     }
 
+    #listening = false;
     async listen(callback: () => void) {
+        if (this.#listening) {
+            throw new Error("Listen already attempted");
+        }
+        this.#listening = true;
+
         try {
             this.#registerServices();
         } catch (err) {
@@ -181,6 +187,11 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
                         `Skipping gRPC method registration: no MessagePattern handler found for ${serviceName}.${method}`,
                     );
                     continue;
+                }
+                if (handler.isEventHandler) {
+                    throw new Error(
+                        `gRPC does not support EventPattern handlers: ${serviceName}.${method}. Use MessagePattern instead.`,
+                    );
                 }
 
                 impl[method] = this.#handle(handler, !!def.responseStream);

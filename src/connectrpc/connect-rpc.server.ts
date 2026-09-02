@@ -40,7 +40,7 @@ export interface ConnectRpcServerConfig {
     adapterOptions?: Partial<ConnectNodeAdapterOptions>;
 }
 
-type MessageHandler = (...args: any[]) => any;
+type MessageHandler = ((...args: any[]) => any) & { isEventHandler?: boolean };
 
 /** 2min in milliseconds */
 const DEFAULT_TIMEOUT = 120_000;
@@ -85,7 +85,13 @@ export class ConnectRpcServer
         return this.#server as T;
     }
 
+    #listening = false;
     async listen(callback: () => void) {
+        if (this.#listening) {
+            throw new Error("Listen already attempted");
+        }
+        this.#listening = true;
+
         const interceptor = createServerTimeoutInterceptor(this.#config.timeout ?? DEFAULT_TIMEOUT);
         const handler = connectNodeAdapter({
             ...this.#config.adapterOptions,
@@ -142,6 +148,11 @@ export class ConnectRpcServer
                         `Skipping Connect method: no MessagePattern handler found for ${serviceDesc.typeName}.${method.localName}`,
                     );
                     continue;
+                }
+                if (handler.isEventHandler) {
+                    throw new Error(
+                        `Connect RPC does not support EventPattern handlers: ${serviceDesc.typeName}.${method.localName}. Use MessagePattern instead.`,
+                    );
                 }
 
                 const isStreaming =

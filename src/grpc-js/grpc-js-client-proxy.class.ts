@@ -2,17 +2,25 @@ import { ClientProxy, type MsPattern, type ReadPacket, type WritePacket } from "
 import {
     credentials,
     makeClientConstructor,
+    type CallOptions,
     type ChannelCredentials,
     type ClientOptions,
+    type Metadata,
     type ServiceDefinition,
 } from "@grpc/grpc-js";
 import type { ServiceClient } from "@grpc/grpc-js/build/src/make-client.js";
+import { defer, mergeMap, Observable } from "rxjs";
 
 export interface GrpcJsClientProxyConfig {
     address: string;
     services: Record<string, ServiceDefinition>;
     credentials?: ChannelCredentials;
     options?: Partial<ClientOptions>;
+}
+
+export interface GrpcJsSendOptions {
+    metadata?: Metadata;
+    callOptions?: CallOptions;
 }
 
 export class GrpcJsClientProxy extends ClientProxy {
@@ -39,17 +47,44 @@ export class GrpcJsClientProxy extends ClientProxy {
         return this.#clients as T;
     }
 
-    protected override publish(packet: ReadPacket, callback: (packet: WritePacket) => void): () => void {
+    sendWithOptions<TResult = any, TInput = any>(
+        pattern: MsPattern,
+        data: TInput,
+        options?: GrpcJsSendOptions,
+    ): Observable<TResult> {
+        return defer(async () => this.connect()).pipe(
+            mergeMap(
+                () =>
+                    new Observable<TResult>((observer) => {
+                        const callback = this.createObserver(observer);
+                        return this.publish({ pattern, data }, callback, options);
+                    }),
+            ),
+        );
+    }
+
+    protected override publish(
+        packet: ReadPacket,
+        callback: (packet: WritePacket) => void,
+        options?: GrpcJsSendOptions,
+    ): () => void {
         const { service, method } = this.#resolvePattern(packet.pattern);
         const client = this.#getClient(service);
         const call = client[method] as Function;
+        const methodDefinition = this.#config.services[service]?.[method];
         let cancelled = false;
 
         try {
-            const result = call.call(client, packet.data, (err: unknown, response: unknown) => {
-                if (cancelled) return;
-                callback(err ? { err, isDisposed: true } : { response, isDisposed: true });
-            });
+            const args: unknown[] = [packet.data];
+            if (options?.metadata) args.push(options.metadata);
+            if (options?.callOptions) args.push(options.callOptions);
+            if (!methodDefinition?.responseStream) {
+                args.push((err: unknown, response: unknown) => {
+                    if (cancelled) return;
+                    callback(err ? { err, isDisposed: true } : { response, isDisposed: true });
+                });
+            }
+            const result = call.call(client, ...args);
 
             if (result?.on && typeof result.on === "function") {
                 result.on("data", (response: unknown) => !cancelled && callback({ response }));

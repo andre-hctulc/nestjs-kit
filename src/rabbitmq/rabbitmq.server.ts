@@ -6,7 +6,6 @@ import {
     connect,
     type Channel,
     type ChannelModel,
-    type ConfirmChannel,
     type ConsumeMessage,
     type Options,
     type SocketOptions,
@@ -18,8 +17,8 @@ import {
     raceWithSignal,
     resolveFinalTimeout,
 } from "../common/util/system/system.util.js";
-import { toErrorShape } from "../common/index.js";
-import { normalizeRabbitPattern } from "./rabbit-system.util.js";
+import { toErrorShape, type ErrorShape } from "../common/errors/index.js";
+import { normalizeAndSerializeRabbitPattern } from "./rabbit-system.util.js";
 
 export interface RabbitMqDlOptions {
     /**
@@ -31,19 +30,18 @@ export interface RabbitMqDlOptions {
     dlq?: string;
     dlxOptions?: Options.AssertExchange;
     dlqOptions?: Options.AssertQueue;
-    dlqPublishOptions?: Options.Publish;
 }
 
-export interface RabbitMqSetupOptions {
+export interface RabbitMqHandlerSetupOptions {
     exchangeOptions?: Options.AssertExchange;
     queueOptions?: Options.AssertQueue;
-    replyPublishOptions?: Options.Publish;
+    publishOptions?: Options.Publish;
     dl?: RabbitMqDlOptions | false;
 }
 
 export interface RabbitMqHandlerOptions {
     /** Handler level setup options */
-    setup?: RabbitMqSetupOptions;
+    setup?: RabbitMqHandlerSetupOptions;
     timeout?: number;
 }
 
@@ -53,13 +51,13 @@ export interface RabbitMqConnection {
     /** The default exchange to use for this connection. */
     exchange?: string;
     /** Connection level setup options. */
-    setup?: RabbitMqSetupOptions;
+    setup?: RabbitMqHandlerSetupOptions;
 }
 
 export interface RabbitMqServerConfig {
     connection: RabbitMqConnection | Record<string, RabbitMqConnection>;
     /** Shared setup options */
-    setup?: RabbitMqSetupOptions;
+    setup?: RabbitMqHandlerSetupOptions;
     /**
      * Default handler options.
      * Merged with handler level options.
@@ -67,7 +65,10 @@ export interface RabbitMqServerConfig {
     handlerOptions?: Omit<RabbitMqHandlerOptions, "setup">;
 }
 
-type MessageHandler = (...args: any[]) => any;
+type MessageHandler = ((...args: any[]) => any) & {
+    isEventHandler?: boolean;
+    next?: MessageHandler;
+};
 
 export interface RabbitMqMethodPattern {
     exchange?: string;
@@ -78,8 +79,16 @@ export interface RabbitMqMethodPattern {
 }
 
 export interface RabbitMqStreamResponse {
-    __rabbit_stream_chunk__: unknown;
-    __rabbit_stream_end__?: boolean;
+    chunk: unknown;
+    streamEnd?: boolean;
+}
+
+export interface RabbitMqErrorResponse {
+    error: ErrorShape;
+}
+
+export interface RabbitMqResponse {
+    result: unknown;
 }
 
 /** 2min in milliseconds */
@@ -87,6 +96,7 @@ const DEFAULT_TIMEOUT = 120_000;
 
 /** 24h in milliseconds */
 const MAX_TIMEOUT = 86_400_000;
+const DEADLINE_HEADER = "x-rabbitmq-deadline";
 
 export class RabbitMqServer
     extends Server<Record<string, (...args: any[]) => any>, string>
@@ -117,10 +127,16 @@ export class RabbitMqServer
     }
 
     protected override normalizePattern(pattern: MsPattern): string {
-        return normalizeRabbitPattern(pattern);
+        return normalizeAndSerializeRabbitPattern(pattern);
     }
 
+    #listening = false;
     async listen(callback: () => void) {
+        if (this.#listening) {
+            throw new Error("Listen already attempted");
+        }
+        this.#listening = true;
+
         await Promise.all(
             Object.entries(this.#connections).map(([name, socket]) => this.#setupChannelModel(name, socket)),
         );
@@ -210,26 +226,13 @@ export class RabbitMqServer
             },
         });
         await channel.bindQueue(queue, exchange, routingKey);
-        const dlqChannel = dlq && !dlx ? await channelModel.createConfirmChannel() : undefined;
         if (dlq) {
             await channel.assertQueue(dlq, { durable: true, ...dl?.dlqOptions });
             await channel.bindQueue(dlq, dlx ?? exchange, dlq);
         }
         await channel.consume(
             queue,
-            (message) =>
-                this.#handleMessage(
-                    channel,
-                    dlqChannel,
-                    handler,
-                    message,
-                    exchange,
-                    dlx,
-                    dlq,
-                    dl,
-                    setup,
-                    options,
-                ),
+            (message) => this.#handleMessage(channel, handler, message, exchange, dlx, setup, options),
             {
                 noAck: false,
             },
@@ -240,14 +243,11 @@ export class RabbitMqServer
 
     async #handleMessage(
         channel: Channel,
-        dlqChannel: ConfirmChannel | undefined,
         handler: MessageHandler,
         message: ConsumeMessage | null,
         exchange: string,
         dlx: string | undefined,
-        dlq: string | undefined,
-        dl: RabbitMqDlOptions | undefined,
-        setup: RabbitMqSetupOptions,
+        setup: RabbitMqHandlerSetupOptions,
         handlerOptions: RabbitMqHandlerOptions & { timeout?: number },
     ) {
         if (!message) {
@@ -257,7 +257,7 @@ export class RabbitMqServer
         const handlerLabel = `${exchange}.${message.fields.routingKey}`;
 
         const timeout = resolveFinalTimeout(
-            undefined,
+            this.#getDeadline(message.properties.headers?.[DEADLINE_HEADER]),
             handlerOptions.timeout ?? DEFAULT_TIMEOUT,
             MAX_TIMEOUT,
         );
@@ -265,70 +265,114 @@ export class RabbitMqServer
         try {
             const content = JSON.parse(message.content.toString("utf8"));
             const signal = AbortSignal.timeout(timeout);
+
+            // No id: Event call
+            if (!content || typeof content !== "object" || !("id" in content)) {
+                await this.#handleEventHandlers(handler, content?.data, message, signal);
+                channel.ack(message);
+                return;
+            }
+
+            if (handler.isEventHandler) {
+                throw new Error(`RabbitMQ RPC request targets an EventPattern handler: ${handlerLabel}`);
+            }
+
             const resultPromise = Promise.resolve(handler(content.data, message));
             const result = await raceWithSignal(resultPromise, signal);
 
             if (isAsyncGenerator(result) || isGenerator(result)) {
                 for await (const value of iterateWithSignal(result, signal)) {
-                    this.#sendDirectReply(channel, message, { __rabbit_stream_chunk__: value }, setup);
+                    this.#sendDirectReply(
+                        channel,
+                        message,
+                        { chunk: value } satisfies RabbitMqStreamResponse,
+                        setup,
+                    );
                 }
                 this.#sendDirectReply(
                     channel,
                     message,
-                    { __rabbit_stream_chunk__: null, __rabbit_stream_end__: true },
+                    {
+                        chunk: null,
+                        streamEnd: true,
+                    } satisfies RabbitMqStreamResponse,
                     setup,
                 );
             } else if (isObservable(result)) {
                 await this.#awaitObservable(result, signal, (value) =>
-                    this.#sendDirectReply(channel, message, { __rabbit_stream_chunk__: value }, setup),
+                    this.#sendDirectReply(
+                        channel,
+                        message,
+                        { chunk: value } satisfies RabbitMqStreamResponse,
+                        setup,
+                    ),
                 );
                 this.#sendDirectReply(
                     channel,
                     message,
-                    { __rabbit_stream_chunk__: null, __rabbit_stream_end__: true },
+                    {
+                        chunk: null,
+                        streamEnd: true,
+                    } satisfies RabbitMqStreamResponse,
                     setup,
                 );
             } else if (result !== undefined) {
-                this.#sendDirectReply(channel, message, result, setup);
+                this.#sendDirectReply(channel, message, { result } satisfies RabbitMqResponse, setup);
             }
             channel.ack(message);
         } catch (err) {
             this.#logger.error(`Error at ${handlerLabel}`, err);
+
+            // No-op for event handlers, since they don't add replyTo or correlationId properties to the message.
+            this.#sendDirectReply(
+                channel,
+                message,
+                { error: toErrorShape(err) } satisfies RabbitMqErrorResponse,
+                setup,
+            );
+
             if (dlx) {
                 channel.nack(message, false, false);
                 return;
             }
-            if (dlq && dlqChannel) {
-                try {
-                    const publishOptions = dl?.dlqPublishOptions;
-                    dlqChannel.publish(exchange, dlq, message.content, {
-                        persistent: true,
-                        contentType: message.properties.contentType,
-                        correlationId: message.properties.correlationId,
-                        ...publishOptions,
-                        headers: {
-                            ...message.properties.headers,
-                            ...publishOptions?.headers,
-                            error: JSON.stringify(toErrorShape(err)),
-                        },
-                    });
-                    await dlqChannel.waitForConfirms();
-                } catch (publishError) {
-                    this.#logger.error(`Failed to publish to DLQ at ${handlerLabel}`, publishError);
-                    channel.nack(message, false, true);
-                    return;
+            channel.nack(message, false, false);
+        }
+    }
+
+    async #handleEventHandlers(
+        handler: MessageHandler,
+        data: unknown,
+        message: ConsumeMessage,
+        signal: AbortSignal,
+    ): Promise<void> {
+        let eventHandler: MessageHandler | undefined = handler;
+        let found = false;
+
+        while (eventHandler) {
+            if (eventHandler.isEventHandler) {
+                found = true;
+                const result = await raceWithSignal(Promise.resolve(eventHandler(data, message)), signal);
+
+                if (isObservable(result)) {
+                    await this.#awaitObservable(result, signal, () => {});
+                } else if (isAsyncGenerator(result) || isGenerator(result)) {
+                    for await (const _ of iterateWithSignal(result, signal)) {
+                        // Event streams are consumed for completion only.
+                    }
                 }
-                channel.ack(message);
-            } else {
-                channel.nack(message, false, false);
             }
+            eventHandler = eventHandler.next;
+        }
+
+        if (!found) {
+            throw new Error(`No RabbitMQ event handler registered for ${message.fields.routingKey}`);
         }
     }
 
     #resolveSetupOptions(
         connection: RabbitMqConnection,
         handlerSetup: RabbitMqHandlerOptions["setup"],
-    ): RabbitMqSetupOptions {
+    ): RabbitMqHandlerSetupOptions {
         const serverSetup = this.#config.setup;
         const connectionSetup = connection.setup;
         const serverDl = serverSetup?.dl;
@@ -351,11 +395,6 @@ export class RabbitMqServer
                           ...connectionDl?.dlqOptions,
                           ...handlerDl?.dlqOptions,
                       },
-                      dlqPublishOptions: {
-                          ...serverDl.dlqPublishOptions,
-                          ...connectionDl?.dlqPublishOptions,
-                          ...handlerDl?.dlqPublishOptions,
-                      },
                   };
 
         return {
@@ -372,13 +411,18 @@ export class RabbitMqServer
                 ...connectionSetup?.queueOptions,
                 ...handlerSetup?.queueOptions,
             },
-            replyPublishOptions: {
-                ...serverSetup?.replyPublishOptions,
-                ...connectionSetup?.replyPublishOptions,
-                ...handlerSetup?.replyPublishOptions,
+            publishOptions: {
+                ...serverSetup?.publishOptions,
+                ...connectionSetup?.publishOptions,
+                ...handlerSetup?.publishOptions,
             },
             dl,
         };
+    }
+
+    #getDeadline(value: unknown): number | undefined {
+        const deadline = typeof value === "number" ? value : Number(value);
+        return Number.isFinite(deadline) ? deadline : undefined;
     }
 
     #resolveHandlerOptions(
@@ -396,7 +440,7 @@ export class RabbitMqServer
         channel: Channel,
         message: ConsumeMessage,
         result: unknown,
-        setup: RabbitMqSetupOptions,
+        setup: RabbitMqHandlerSetupOptions,
     ) {
         const { replyTo, correlationId } = message.properties;
         if (!replyTo) {
@@ -404,7 +448,7 @@ export class RabbitMqServer
         }
 
         channel.sendToQueue(replyTo, Buffer.from(JSON.stringify(result)), {
-            ...setup.replyPublishOptions,
+            ...setup.publishOptions,
             contentType: "application/json",
             correlationId,
         });

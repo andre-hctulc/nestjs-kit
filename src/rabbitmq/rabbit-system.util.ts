@@ -1,7 +1,7 @@
 import type { MsPattern } from "@nestjs/microservices";
 import type { RabbitMqMethodPattern } from "./rabbitmq.server.js";
 
-export function normalizeRabbitPattern(pattern: MsPattern): string {
+export function normalizeRabbitPattern(pattern: MsPattern): RabbitMqMethodPattern {
     let obj: Record<string, any> = {};
 
     if (typeof pattern === "string") {
@@ -12,11 +12,15 @@ export function normalizeRabbitPattern(pattern: MsPattern): string {
         obj = { routingKey: String(pattern) };
     }
 
-    return JSON.stringify({
+    return {
         exchange: obj.exchange,
         routingKey: obj.routingKey,
         queue: obj.queue,
         connection: obj.connection,
         options: obj.options,
-    } satisfies RabbitMqMethodPattern);
+    };
+}
+
+export function normalizeAndSerializeRabbitPattern(pattern: MsPattern): string {
+    return JSON.stringify(normalizeRabbitPattern(pattern));
 }

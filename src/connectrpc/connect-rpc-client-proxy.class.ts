@@ -1,7 +1,8 @@
 import { ClientProxy, type MsPattern, type ReadPacket, type WritePacket } from "@nestjs/microservices";
-import { createClient, type Transport } from "@connectrpc/connect";
+import { createClient, type CallOptions, type Transport } from "@connectrpc/connect";
 import type { DescService } from "@bufbuild/protobuf";
 import type { ConnectTransportOptions } from "@connectrpc/connect-node";
+import { defer, mergeMap, Observable } from "rxjs";
 
 export interface ConnectRpcClientProxyConfig {
     transport: { customTransport: Transport } | ConnectTransportOptions;
@@ -12,6 +13,7 @@ export class ConnectRpcClientProxy extends ClientProxy {
     #config: ConnectRpcClientProxyConfig;
     #clients = new Map<string, Record<string, Function>>();
     #transport: Transport | undefined;
+    #connectPromise: Promise<void> | undefined;
 
     constructor(config: ConnectRpcClientProxyConfig) {
         super();
@@ -22,10 +24,26 @@ export class ConnectRpcClientProxy extends ClientProxy {
     }
 
     override async connect(): Promise<void> {
-        this.#transport =
-            "customTransport" in this.#config.transport
-                ? this.#config.transport.customTransport
-                : await this.#creteNodeTransport(this.#config.transport);
+        if (this.#transport) {
+            return;
+        }
+        if (this.#connectPromise) {
+            return this.#connectPromise;
+        }
+
+        this.#connectPromise = (async () => {
+            this.#transport =
+                "customTransport" in this.#config.transport
+                    ? this.#config.transport.customTransport
+                    : await this.#creteNodeTransport(this.#config.transport);
+        })();
+
+        try {
+            await this.#connectPromise;
+        } catch (err) {
+            this.#connectPromise = undefined;
+            throw err;
+        }
     }
 
     async #creteNodeTransport(options: ConnectTransportOptions): Promise<Transport> {
@@ -33,18 +51,49 @@ export class ConnectRpcClientProxy extends ClientProxy {
         return createConnectTransport(options);
     }
 
-    override close() {}
+    override close() {
+        this.#clients.clear();
+        this.#transport = undefined;
+        this.#connectPromise = undefined;
+    }
 
     override unwrap<T>(): T {
         return this.#clients as T;
     }
 
-    protected override publish(packet: ReadPacket, callback: (packet: WritePacket) => void): () => void {
+    sendWithOptions<TResult = any, TInput = any>(
+        pattern: MsPattern,
+        data: TInput,
+        options?: CallOptions,
+    ): Observable<TResult> {
+        return defer(async () => this.connect()).pipe(
+            mergeMap(
+                () =>
+                    new Observable<TResult>((observer) => {
+                        const callback = this.createObserver(observer);
+                        return this.publish({ pattern, data }, callback, options);
+                    }),
+            ),
+        );
+    }
+
+    protected override publish(
+        packet: ReadPacket,
+        callback: (packet: WritePacket) => void,
+        options?: CallOptions,
+    ): () => void {
         const { service, method } = this.#resolvePattern(packet.pattern);
         let cancelled = false;
         const controller = new AbortController();
+        const abort = () => controller.abort();
+        if (options?.signal?.aborted) {
+            abort();
+        } else {
+            options?.signal?.addEventListener("abort", abort, { once: true });
+        }
+        const callOptions: CallOptions = { ...options, signal: controller.signal };
 
-        void Promise.resolve(this.#getClient(service)[method](packet.data, { signal: controller.signal }))
+        void Promise.resolve(this.#getClient(service)[method](packet.data, callOptions))
             .then(async (result: unknown) => {
                 if (
                     result &&
@@ -62,6 +111,7 @@ export class ConnectRpcClientProxy extends ClientProxy {
 
         return () => {
             cancelled = true;
+            options?.signal?.removeEventListener("abort", abort);
             controller.abort();
         };
     }

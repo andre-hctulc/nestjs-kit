@@ -14,23 +14,6 @@ export function createSearchParams(
     return searchParams;
 }
 
-/**
- * String arrays are joined with a comma
- */
-export function normalizeParams(
-    paramsObj: Record<string, string | undefined | string[]>
-): Record<string, string> {
-    const obj: Record<string, string> = {};
-    for (const [key, value] of Object.entries(paramsObj)) {
-        if (Array.isArray(value)) {
-            obj[key] = value.join(",");
-        } else if (value !== undefined) {
-            obj[key] = value;
-        }
-    }
-    return obj;
-}
-
 export function paramValue<T>(value: T | T[] | undefined): T | undefined {
     if (Array.isArray(value)) {
         return value[0];
