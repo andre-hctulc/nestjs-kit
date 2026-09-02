@@ -57,7 +57,7 @@ export interface RabbitMqConnection {
 }
 
 export interface RabbitMqServerConfig {
-    connections?: Record<string, RabbitMqConnection>;
+    connection: RabbitMqConnection | Record<string, RabbitMqConnection>;
     /** Shared setup options */
     setup?: RabbitMqSetupOptions;
     /**
@@ -101,10 +101,15 @@ export class RabbitMqServer
     #channelModels = new Map<string, ChannelModel>();
     #closeInitiated = false;
 
-    constructor(config: RabbitMqServerConfig = {}) {
+    constructor(config: RabbitMqServerConfig) {
         super();
         this.#config = config;
-        this.#connections = config.connections ?? { default: { address: "amqp://localhost" } };
+
+        if (typeof config.connection.address === "string") {
+            this.#connections = { default: config.connection as RabbitMqConnection };
+        } else {
+            this.#connections = config.connection as Record<string, RabbitMqConnection>;
+        }
     }
 
     override unwrap<T>(): T {
