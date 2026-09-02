@@ -1,4 +1,4 @@
-import { type CustomTransportStrategy, Server, Transport } from "@nestjs/microservices";
+import { type CustomTransportStrategy, type MsPattern, Server, Transport } from "@nestjs/microservices";
 import {
     Server as GrpcServer,
     Metadata,
@@ -6,7 +6,7 @@ import {
     type UntypedHandleCall,
     status,
     type ServerInterceptor,
-    type ServerOptions,
+    type ServerOptions as GrpcServerOptions,
     ServerInterceptingCall,
     ServerCredentials,
 } from "@grpc/grpc-js";
@@ -18,10 +18,12 @@ import {
     type WritableGrpcCall,
 } from "./grpc-system.util.js";
 import { isObservable } from "rxjs";
-import { isAsyncIterable } from "../rpc/rpc.util.js";
 import {
     createAbortError,
     firstValueFromObservable,
+    isAsyncGenerator,
+    isGenerator,
+    iterateWithSignal,
     raceWithSignal,
     resolveFinalTimeout,
 } from "../common/util/system/system.util.js";
@@ -33,13 +35,17 @@ const DEFAULT_TIMEOUT = 120_000;
 /** Maximum gRPC call deadline in milliseconds (24 hours) */
 const MAX_TIMEOUT = 24 * 60 * 60 * 1000;
 
-interface GrpcJsServerOptions {
+export interface GrpcJsServerConfig {
     address?: string;
-    serverOptions?: ServerOptions;
+    serverOptions?: GrpcServerOptions;
     services?: Record<string, ServiceDefinition>;
     timeout?: number;
-    maxTimeout?: number;
     credentials?: ServerCredentials;
+}
+
+export interface GrpcJsMethodPattern {
+    service: string;
+    method: string;
 }
 
 type GrpcJsServerEventMap = {
@@ -51,10 +57,10 @@ type GrpcJsServerEventMap = {
 type GrpcJsServerEventType = string & keyof GrpcJsServerEventMap;
 type GrpcMessageHandler = (...args: any[]) => any;
 
-function createTimeoutInterceptor(timeout: number, maxTimeout: number): ServerInterceptor {
+function createTimeoutInterceptor(timeout: number): ServerInterceptor {
     return (_methodDescriptor, call) => {
         const deadline = call.getDeadline?.();
-        const finalTimeout = resolveFinalTimeout(deadline, timeout, maxTimeout);
+        const finalTimeout = resolveFinalTimeout(deadline, timeout, MAX_TIMEOUT);
 
         const timer = setTimeout(() => {
             call.sendStatus({
@@ -90,21 +96,18 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
 
     #server: GrpcServer;
     #address: string;
-    #options: GrpcJsServerOptions;
+    #config: GrpcJsServerConfig;
     #eventListeners: Map<GrpcJsServerEventType, Set<(...args: any[]) => any>> = new Map();
 
-    constructor(options: GrpcJsServerOptions = {}) {
+    constructor(config: GrpcJsServerConfig = {}) {
         super();
-        this.#address = options.address ?? "0.0.0.0:50051";
-        this.#options = options;
+        this.#address = config.address ?? "0.0.0.0:50051";
+        this.#config = config;
 
-        const timeoutInterceptor = createTimeoutInterceptor(
-            this.#options.timeout ?? DEFAULT_TIMEOUT,
-            this.#options.maxTimeout ?? MAX_TIMEOUT,
-        );
-        const serverOptions: ServerOptions = {
-            ...(options.serverOptions ?? {}),
-            interceptors: [timeoutInterceptor, ...(options.serverOptions?.interceptors ?? [])],
+        const timeoutInterceptor = createTimeoutInterceptor(this.#config.timeout ?? DEFAULT_TIMEOUT);
+        const serverOptions: GrpcServerOptions = {
+            ...(config.serverOptions ?? {}),
+            interceptors: [timeoutInterceptor, ...(config.serverOptions?.interceptors ?? [])],
         };
 
         this.#server = new GrpcServer(serverOptions);
@@ -125,7 +128,7 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
         await new Promise<void>((resolve, reject) => {
             this.#server.bindAsync(
                 this.#address,
-                this.#options.credentials ?? ServerCredentials.createInsecure(),
+                this.#config.credentials ?? ServerCredentials.createInsecure(),
                 (err) => {
                     if (err) {
                         this.#dispatchEvent("error", err);
@@ -142,14 +145,29 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
         this.#dispatchEvent("listening", this.#address);
     }
 
+    #closeInitiated = false;
     close() {
+        this.#closeInitiated = true;
         this.#server.forceShutdown();
         this.#dispatchEvent("close");
         this.#eventListeners.clear();
     }
 
+    protected override normalizePattern(pattern: MsPattern): string {
+        if (typeof pattern === "string") {
+            return pattern;
+        }
+        if (typeof pattern === "object" && pattern !== null && "service" in pattern && "method" in pattern) {
+            const { service, method } = pattern as any;
+            if (service && method) {
+                return `${service}.${method}`;
+            }
+        }
+        return JSON.stringify(pattern);
+    }
+
     #registerServices() {
-        for (const [serviceName, serviceDef] of Object.entries(this.#options.services ?? {})) {
+        for (const [serviceName, serviceDef] of Object.entries(this.#config.services ?? {})) {
             const impl: Record<string, UntypedHandleCall> = {};
 
             for (const [method, def] of Object.entries(serviceDef) as Array<
@@ -290,8 +308,8 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
             return;
         }
 
-        if (isAsyncIterable(result)) {
-            for await (const value of this.#iterateWithSignal(result, signal)) {
+        if (isAsyncGenerator(result) || isGenerator(result)) {
+            for await (const value of iterateWithSignal(result, signal)) {
                 signal.throwIfAborted();
                 call.write?.(value);
             }
@@ -329,25 +347,6 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
         }
 
         return await raceWithSignal(Promise.resolve(value), signal);
-    }
-
-    async *#iterateWithSignal(
-        iterable: AsyncIterable<unknown>,
-        signal: AbortSignal,
-    ): AsyncGenerator<unknown> {
-        const iterator = iterable[Symbol.asyncIterator]();
-
-        try {
-            while (true) {
-                const next = await raceWithSignal(iterator.next(), signal);
-                if (next.done) {
-                    return;
-                }
-                yield next.value;
-            }
-        } finally {
-            await iterator.return?.();
-        }
     }
 
     async *#observableToIterable(observable: unknown, signal: AbortSignal): AsyncGenerator<unknown> {

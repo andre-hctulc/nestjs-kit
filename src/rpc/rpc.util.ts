@@ -1,6 +1,7 @@
 import type { RpcResponse, RpcResponseInput, RpcErrorResponse, RpcErrorResponseInput } from "./rpc.model.js";
 import type { Metadata } from "@grpc/grpc-js";
 import type { HandlerContext } from "@connectrpc/connect";
+import type { ConsumeMessage } from "amqplib";
 
 /**
  * Create a JSON-RPC response object.
@@ -39,7 +40,7 @@ export function assertGrpcContext(context: unknown): Metadata {
     return context as Metadata;
 }
 
-export function isConnectRpcContext(context: unknown): context is HandlerContext {
+export function isConnectContext(context: unknown): context is HandlerContext {
     return (
         (context as HandlerContext)?.requestHeader instanceof Headers &&
         (context as HandlerContext)?.service &&
@@ -47,13 +48,25 @@ export function isConnectRpcContext(context: unknown): context is HandlerContext
     );
 }
 
-export function assertConnectRpcContext(context: unknown): HandlerContext {
-    if (!isConnectRpcContext(context)) {
+export function assertConnectContext(context: unknown): HandlerContext {
+    if (!isConnectContext(context)) {
         throw new Error("Not a connect rpc HandlerContext");
     }
     return context as HandlerContext;
 }
 
-export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
-    return !!value && typeof (value as any)[Symbol.asyncIterator] === "function";
+export function isRabbitContext(context: unknown): context is ConsumeMessage {
+    return (
+        !!context &&
+        typeof (context as ConsumeMessage).content === "object" &&
+        typeof (context as ConsumeMessage).fields === "object" &&
+        typeof (context as ConsumeMessage).properties === "object"
+    );
+}
+
+export function assertRabbitContext(context: unknown): ConsumeMessage {
+    if (!isRabbitContext(context)) {
+        throw new Error("Not a RabbitMQ ConsumeMessage context");
+    }
+    return context as ConsumeMessage;
 }

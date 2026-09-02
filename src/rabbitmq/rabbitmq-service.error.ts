@@ -4,7 +4,7 @@ import type { ServiceErrorDetails, ServiceErrorOptions } from "../common/index.j
 import { mergeOptions, mergeTags } from "../common/errors/service-error.util.js";
 import { Code } from "@connectrpc/connect";
 
-export class ConnectServiceError extends RpcException implements ErrorShape {
+export class RabbitMqServiceError extends RpcException implements ErrorShape {
     static opts = mergeOptions;
 
     readonly errorCode: string;
@@ -12,10 +12,10 @@ export class ConnectServiceError extends RpcException implements ErrorShape {
 
     readonly details: ServiceErrorDetails;
 
-    readonly cause: unknown;
+    override readonly cause: unknown;
 
     constructor(message: string, options: ServiceErrorOptions = {}) {
-        const errorCode = options.errorCode || "CONNECT_SERVICE_ERROR";
+        const errorCode = options.errorCode || "RABBIT_SERVICE_ERROR";
         // grpc error
         const statusCode = options.statusCode ?? Code.Internal;
 
@@ -23,7 +23,7 @@ export class ConnectServiceError extends RpcException implements ErrorShape {
             ...options.details,
             errorCode,
             statusCode,
-            tags: mergeTags({ details: { tags: ["connect_service"] } }, options),
+            tags: mergeTags({ details: { tags: ["rabbit_service"] } }, options),
         };
 
         super({
@@ -31,8 +31,6 @@ export class ConnectServiceError extends RpcException implements ErrorShape {
             errorCode,
             statusCode,
             details,
-            // add rpc status code as code for connect/grpc compatibility
-            code: statusCode,
         });
 
         this.errorCode = errorCode;

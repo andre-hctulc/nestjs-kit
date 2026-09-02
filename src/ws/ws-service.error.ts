@@ -11,7 +11,7 @@ export class WsServiceException extends RpcException implements ErrorShape {
 
     readonly details: ServiceErrorDetails;
 
-    readonly cause: unknown;
+    override readonly cause: unknown;
 
     constructor(message: string, options: ServiceErrorOptions = {}) {
         const errorCode = options.errorCode || "WS_SERVICE_ERROR";

@@ -1,6 +1,7 @@
 import { type ArgumentsHost } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { isConnectRpcContext, isGrpcContext } from "../../rpc/rpc.util.js";
+import { isConnectContext, isGrpcContext } from "../../rpc/rpc.util.js";
+import type { ErrorShape } from "./error-shape.interface.js";
 
 /**
  * A utility function to send errors in a consistent way across different contexts (HTTP, RPC, WebSockets).
@@ -23,7 +24,7 @@ export async function sendError(
         case "rpc":
             const rxjs = await import("rxjs");
             const ctx = host.switchToRpc();
-            const isGrpcLike = isGrpcContext(ctx) || isConnectRpcContext(ctx);
+            const isGrpcLike = isGrpcContext(ctx) || isConnectContext(ctx);
             let mappedStatusCode: number;
 
             if (isGrpcLike) {
@@ -77,7 +78,7 @@ export function getErrorLocationDescription(host: ArgumentsHost): string {
                 return "gRPC";
             }
             // ConnectRPC - HandlerContext has service and method descriptors
-            else if (isConnectRpcContext(ctx)) {
+            else if (isConnectContext(ctx)) {
                 return `ConnectRPC [${ctx.service.typeName}/${ctx.method.name}]`;
             }
             // TCP, RMQ → getPattern()
@@ -232,4 +233,23 @@ function mapToHttpStatusCode(rpcStatusCode: number): number {
     }
 
     return 500; // Unknown Error
+}
+
+export function toErrorShape(error: unknown, fallbackMessage?: string | true): ErrorShape {
+    if (
+        error &&
+        typeof error === "object" &&
+        "errorCode" in error &&
+        "statusCode" in error &&
+        "message" in error
+    ) {
+        return error as ErrorShape;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+        errorCode: "INTERNAL_SERVER_ERROR",
+        statusCode: 500,
+        message: fallbackMessage === true ? "Internal server error" : (fallbackMessage ?? message),
+    };
 }

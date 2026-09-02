@@ -12,7 +12,7 @@ export class GrpcServiceError extends RpcException implements ErrorShape {
 
     readonly details: ServiceErrorDetails;
 
-    readonly cause: unknown;
+    override readonly cause: unknown;
 
     constructor(message: string, options: ServiceErrorOptions = {}) {
         const errorCode = options.errorCode || "GRPC_SERVICE_ERROR";

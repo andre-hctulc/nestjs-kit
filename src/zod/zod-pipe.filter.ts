@@ -2,6 +2,7 @@ import { type ArgumentsHost, Catch, type ExceptionFilter, Logger } from "@nestjs
 import { getErrorLocationDescription, sendError, type ErrorShape } from "../common/index.js";
 import type { ZPipe } from "./zod.pipe.js";
 import { ZPipeError } from "./zod-pipe.error.js";
+import { prettifyError } from "zod";
 
 /**
  * Zod exception filter that exclusively handles {@link ZPipeError}s thrown by {@link ZPipe}s.
@@ -19,7 +20,8 @@ export class ZPipeExceptionFilter implements ExceptionFilter {
         };
 
         const at = getErrorLocationDescription(host);
-        this.#logger.debug(`Validation error at ${at}`, exception);
+        this.#logger.debug(`Validation error at ${at}`);
+        this.#logger.debug(prettifyError(exception.zodError));
 
         return await sendError(host, errObj, errObj.statusCode);
     }

@@ -8,19 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@nestjs/common':
-        specifier: '12'
-        version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/core':
-        specifier: ^12
-        version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@12.0.1)(@nestjs/websockets@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      cookie:
-        specifier: ^1.0.2
-        version: 1.1.1
-      dot-prop:
-        specifier: ^10.2.0
-        version: 10.2.0
-    devDependencies:
       '@bufbuild/protobuf':
         specifier: ^2.13.0
         version: 2.14.0
@@ -36,30 +23,33 @@ importers:
       '@grpc/grpc-js':
         specifier: ^1.14.4
         version: 1.14.4
+      '@nestjs/common':
+        specifier: '12'
+        version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: ^12
+        version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@12.0.1)(@nestjs/websockets@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/microservices':
         specifier: ^12
-        version: 12.0.1(@grpc/grpc-js@1.14.4)(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(@nestjs/websockets@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+        version: 12.0.1(@grpc/grpc-js@1.14.4)(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(@nestjs/websockets@12.0.1)(amqplib@2.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/websockets':
         specifier: ^12
         version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@types/busboy':
-        specifier: ^1.5.4
-        version: 1.5.4
-      '@types/jest':
-        specifier: ^29.5.14
-        version: 29.5.14
-      '@types/node':
-        specifier: ^22.7.4
-        version: 22.20.1
+      amqplib:
+        specifier: ^2.0.1
+        version: 2.0.1
       commander:
         specifier: ^15.0.0
         version: 15.0.0
+      cookie:
+        specifier: ^1.0.2
+        version: 1.1.1
+      dot-prop:
+        specifier: ^10.2.0
+        version: 10.2.0
       fastify:
-        specifier: ^5.7.1
+        specifier: ^5
         version: 5.12.1
-      jest:
-        specifier: ^29.7.0
-        version: 29.7.0(@types/node@22.20.1)
       jose:
         specifier: ^6.0.11
         version: 6.2.10
@@ -72,12 +62,25 @@ importers:
       socket.io:
         specifier: ^4.8.1
         version: 4.8.3
+      zod:
+        specifier: ^4
+        version: 4.4.3
+    devDependencies:
+      '@types/busboy':
+        specifier: ^1.5.4
+        version: 1.5.4
+      '@types/jest':
+        specifier: ^29.5.14
+        version: 29.5.14
+      '@types/node':
+        specifier: ^22.7.4
+        version: 22.20.1
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@types/node@22.20.1)
       ts-jest:
         specifier: ^29.4.12
         version: 29.4.12(@babel/core@7.29.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.29.7))(jest-util@29.7.0)(jest@29.7.0(@types/node@22.20.1))(typescript@6.0.3)
-      zod:
-        specifier: ^4.3.6
-        version: 4.4.3
 
 packages:
 
@@ -593,6 +596,10 @@ packages:
 
   ajv@8.20.0:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
+
+  amqplib@2.0.1:
+    resolution: {integrity: sha512-a3P2MgfCf9nzVis12VxWEn0dS6hcqve7dlEAhXDtIWR27BlhtMkILOc+H9aeHjDi6i6r94dYKc2Kx2OFe3avvg==}
+    engines: {node: '>=18'}
 
   ansi-escapes@4.3.2:
     resolution: {integrity: sha512-gKXj5ALrKWQLsYG9jlTRmR/xKluxHV+Z9QEwNIgCfM1/uwPMCuzVVnh5mwTd+OuBZcwSIMbqssNWRm1lE51QaQ==}
@@ -2198,10 +2205,10 @@ snapshots:
       tslib: 2.8.1
       uid: 2.0.2
     optionalDependencies:
-      '@nestjs/microservices': 12.0.1(@grpc/grpc-js@1.14.4)(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(@nestjs/websockets@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/microservices': 12.0.1(@grpc/grpc-js@1.14.4)(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(@nestjs/websockets@12.0.1)(amqplib@2.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/websockets': 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
 
-  '@nestjs/microservices@12.0.1(@grpc/grpc-js@1.14.4)(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(@nestjs/websockets@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)':
+  '@nestjs/microservices@12.0.1(@grpc/grpc-js@1.14.4)(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(@nestjs/websockets@12.0.1)(amqplib@2.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)':
     dependencies:
       '@nestjs/common': 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/core': 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@12.0.1)(@nestjs/websockets@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -2212,6 +2219,7 @@ snapshots:
     optionalDependencies:
       '@grpc/grpc-js': 1.14.4
       '@nestjs/websockets': 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      amqplib: 2.0.1
 
   '@nestjs/websockets@12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)':
     dependencies:
@@ -2349,6 +2357,8 @@ snapshots:
       fast-uri: 3.1.6
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
+
+  amqplib@2.0.1: {}
 
   ansi-escapes@4.3.2:
     dependencies:

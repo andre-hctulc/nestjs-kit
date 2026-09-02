@@ -1,4 +1,4 @@
-function parseGrpcTimeoutMs(value: string): number | undefined {
+function parseTimeoutMs(value: string): number | undefined {
     const match = /^(\d+)([HMSmun])$/.exec(value.trim());
     if (!match) {
         return undefined;
@@ -44,7 +44,7 @@ export function getConnectClientDeadline(headers: Headers): Date | undefined {
         return undefined;
     }
 
-    const timeoutMs = parseGrpcTimeoutMs(grpcTimeoutValue);
+    const timeoutMs = parseTimeoutMs(grpcTimeoutValue);
     if (timeoutMs === undefined) {
         return undefined;
     }

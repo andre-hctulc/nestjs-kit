@@ -1,4 +1,4 @@
-import type { CustomTransportStrategy } from "@nestjs/microservices";
+import type { CustomTransportStrategy, MsPattern } from "@nestjs/microservices";
 import { Server, Transport } from "@nestjs/microservices";
 import { Logger } from "@nestjs/common";
 import {
@@ -19,21 +19,23 @@ import {
 import { StructSchema } from "@bufbuild/protobuf/wkt";
 import http2, { type ServerOptions } from "node:http2";
 import { isObservable } from "rxjs";
-import { isAsyncIterable } from "../rpc/rpc.util.js";
 import { unwrapBySchema, wrapBySchema } from "./value.util.js";
 import {
     firstValueFromObservable,
+    isAsyncGenerator,
+    isAsyncIterable,
+    isGenerator,
+    iterateWithSignal,
     raceWithSignal,
     resolveFinalTimeout,
 } from "../common/util/system/system.util.js";
 import { getConnectClientDeadline } from "./connect-system.util.js";
 import { mapToGrpcStatusCode } from "../common/index.js";
 
-interface ConnectRpcServerOptions {
+export interface ConnectRpcServerConfig {
     address?: string;
     services?: DescService[];
     timeout?: number;
-    maxTimeout?: number;
     serverOptions?: ServerOptions;
     adapterOptions?: Partial<ConnectNodeAdapterOptions>;
 }
@@ -46,13 +48,15 @@ const DEFAULT_TIMEOUT = 120_000;
 /** Maximum connect call deadline in milliseconds (24 hours) */
 const MAX_TIMEOUT = 24 * 60 * 60 * 1000;
 
-const createServerTimeoutInterceptor: (timeout: number, maxTimeout: number) => Interceptor = (
-    timeout: number,
-    maxTimeout: number,
-) => {
+export interface ConnectMethodPattern {
+    service: string;
+    method: string;
+}
+
+const createServerTimeoutInterceptor: (timeout: number) => Interceptor = (timeout: number) => {
     return (next) => async (req) => {
         const clientDeadline = getConnectClientDeadline(req.header);
-        const finalTimeout = resolveFinalTimeout(clientDeadline, timeout, maxTimeout);
+        const finalTimeout = resolveFinalTimeout(clientDeadline, timeout, MAX_TIMEOUT);
         const serverSignal = AbortSignal.timeout(finalTimeout);
         const combined = req.signal ? AbortSignal.any([req.signal, serverSignal]) : serverSignal;
         return next({ ...req, signal: combined });
@@ -67,14 +71,14 @@ export class ConnectRpcServer
 
     override readonly transportId = Transport.GRPC;
 
-    #options: ConnectRpcServerOptions;
+    #config: ConnectRpcServerConfig;
     #address: string;
     #server: http2.Http2Server | undefined;
 
-    constructor(options: ConnectRpcServerOptions = {}) {
+    constructor(config: ConnectRpcServerConfig = {}) {
         super();
-        this.#address = options.address ?? "0.0.0.0:50051";
-        this.#options = options;
+        this.#address = config.address ?? "0.0.0.0:50051";
+        this.#config = config;
     }
 
     override unwrap<T>(): T {
@@ -82,30 +86,23 @@ export class ConnectRpcServer
     }
 
     async listen(callback: () => void) {
-        try {
-            const interceptor = createServerTimeoutInterceptor(
-                this.#options.timeout ?? DEFAULT_TIMEOUT,
-                this.#options.maxTimeout ?? MAX_TIMEOUT,
-            );
-            const handler = connectNodeAdapter({
-                ...this.#options.adapterOptions,
-                routes: (router) => this.#registerServices(router),
-                interceptors: [interceptor, ...(this.#options.adapterOptions?.interceptors ?? [])],
-            });
+        const interceptor = createServerTimeoutInterceptor(this.#config.timeout ?? DEFAULT_TIMEOUT);
+        const handler = connectNodeAdapter({
+            ...this.#config.adapterOptions,
+            routes: (router) => this.#registerServices(router),
+            interceptors: [interceptor, ...(this.#config.adapterOptions?.interceptors ?? [])],
+        });
 
-            const [host, portStr] = this.#address.split(":");
-            const port = parseInt(portStr, 10);
+        const [host, portStr] = this.#address.split(":");
+        const port = parseInt(portStr, 10);
 
-            await new Promise<void>((resolve, reject) => {
-                this.#server = http2.createServer(this.#options.serverOptions || {}, handler);
-                this.#server.once("error", (err) => {
-                    reject(err);
-                });
-                this.#server.listen(port, host, resolve);
+        await new Promise<void>((resolve, reject) => {
+            this.#server = http2.createServer(this.#config.serverOptions || {}, handler);
+            this.#server.once("error", (err) => {
+                reject(err);
             });
-        } catch (err) {
-            throw err;
-        }
+            this.#server.listen(port, host, resolve);
+        });
 
         callback();
     }
@@ -115,8 +112,21 @@ export class ConnectRpcServer
         this.#server = undefined;
     }
 
+    protected override normalizePattern(pattern: MsPattern): string {
+        if (typeof pattern === "string") {
+            return pattern;
+        }
+        if (typeof pattern === "object" && pattern !== null && "service" in pattern && "method" in pattern) {
+            const { service, method } = pattern as any;
+            if (service && method) {
+                return `${service}.${method}`;
+            }
+        }
+        return JSON.stringify(pattern);
+    }
+
     #registerServices(router: ConnectRouter) {
-        for (const serviceDesc of this.#options.services ?? []) {
+        for (const serviceDesc of this.#config.services ?? []) {
             const impl: Record<string, any> = {};
 
             for (const method of serviceDesc.methods) {
@@ -154,13 +164,10 @@ export class ConnectRpcServer
                 const normalizedReq = self.#unwrapRequest(req, inputSchema);
 
                 try {
-                    const result = await raceWithSignal(
-                        handler(normalizedReq, ctx.requestHeader, ctx),
-                        signal,
-                    );
+                    const result = await raceWithSignal(handler(normalizedReq, ctx), signal);
 
-                    if (isAsyncIterable(result)) {
-                        for await (const value of self.#iterateWithSignal(result, signal)) {
+                    if (isAsyncGenerator(result) || isGenerator(result)) {
+                        for await (const value of iterateWithSignal(result, signal)) {
                             yield wrapBySchema(value, outputSchema);
                         }
                         return;
@@ -186,7 +193,7 @@ export class ConnectRpcServer
             try {
                 ctx.signal.throwIfAborted();
 
-                const result = await handler(normalizedReq, ctx.requestHeader, ctx);
+                const result = await handler(normalizedReq, ctx);
                 ctx.signal.throwIfAborted();
 
                 let resolved = await result;
@@ -201,25 +208,6 @@ export class ConnectRpcServer
                 throw this.#toConnectError(err);
             }
         };
-    }
-
-    async *#iterateWithSignal(
-        iterable: AsyncIterable<unknown>,
-        signal: AbortSignal,
-    ): AsyncGenerator<unknown, void, void> {
-        const iterator = iterable[Symbol.asyncIterator]();
-
-        try {
-            while (true) {
-                const next = await raceWithSignal(iterator.next(), signal);
-                if (next.done) {
-                    return;
-                }
-                yield next.value;
-            }
-        } finally {
-            await iterator.return?.();
-        }
     }
 
     #unwrapRequest(value: unknown, schema: DescMessage): unknown {
@@ -295,23 +283,21 @@ export class ConnectRpcServer
         }
     }
 
-    #patternCandidates(serviceName: string, localName: string, protoName: string): unknown[] {
+    #patternCandidates(serviceName: string, localMethodName: string, methodName: string): unknown[] {
         return [
-            { service: serviceName, method: localName },
-            { service: serviceName, method: protoName },
-            `${serviceName}.${localName}`,
-            `${serviceName}.${protoName}`,
-            { cmd: `${serviceName}.${localName}` },
-            { cmd: `${serviceName}.${protoName}` },
-            localName,
-            protoName,
+            { service: serviceName, method: localMethodName },
+            { service: serviceName, method: methodName },
+            `${serviceName}.${localMethodName}`,
+            `${serviceName}.${methodName}`,
+            localMethodName,
+            methodName,
         ];
     }
 
     #resolveMessageHandler(candidates: unknown[]): MessageHandler | null {
         for (const candidate of candidates) {
-            const key = this.normalizePattern(candidate as any);
-            const handler = this.getHandlerByPattern(this.getRouteFromPattern(key));
+            const pattern = this.normalizePattern(candidate as any);
+            const handler = this.getHandlerByPattern(pattern);
             if (handler) return handler;
         }
         return null;

@@ -75,6 +75,31 @@ export async function raceWithSignal<T>(promise: Promise<T>, signal: AbortSignal
     });
 }
 
+export async function* iterateWithSignal(
+    iterable: AsyncGenerator<unknown> | Generator<unknown>,
+    signal: AbortSignal,
+): AsyncGenerator<unknown> {
+    const iterator = isAsyncGenerator(iterable)
+        ? iterable[Symbol.asyncIterator]()
+        : iterable[Symbol.iterator]();
+
+    try {
+        while (true) {
+            const next = await raceWithSignal(Promise.resolve(iterator.next()), signal);
+            if (next.done) {
+                return;
+            }
+            yield next.value;
+        }
+    } finally {
+        if (isAsyncGenerator(iterable)) {
+            await iterable.return?.(undefined);
+        } else {
+            iterable.return?.(undefined);
+        }
+    }
+}
+
 export function createAbortError(message: string): Error {
     const error = new Error(message);
     Object.defineProperty(error, "name", { value: "AbortError" });
@@ -160,4 +185,16 @@ export function resolveFinalTimeout(
               : undefined;
     const boundedTimeout = Math.min(clientTimeout ?? timeout, maxTimeout);
     return Math.max(0, boundedTimeout);
+}
+
+export function isAsyncGenerator(value: unknown): value is AsyncGenerator<unknown> {
+    return !!value && typeof (value as any)[Symbol.asyncIterator] === "function";
+}
+
+export function isGenerator(value: unknown): value is Generator<unknown> {
+    return !!value && typeof (value as any)[Symbol.iterator] === "function";
+}
+
+export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
+    return !!value && typeof (value as any)[Symbol.asyncIterator] === "function";
 }

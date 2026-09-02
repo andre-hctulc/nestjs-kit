@@ -2,8 +2,9 @@ import { RpcException } from "@nestjs/microservices";
 import type { ErrorShape } from "../common/errors/error-shape.interface.js";
 import type { ServiceErrorDetails, ServiceErrorOptions } from "../common/index.js";
 import { mergeOptions, mergeTags } from "../common/errors/service-error.util.js";
+import { Code } from "@connectrpc/connect";
 
-export class RpcServiceError extends RpcException implements ErrorShape {
+export class ConnectRpcServiceError extends RpcException implements ErrorShape {
     static opts = mergeOptions;
 
     readonly errorCode: string;
@@ -14,16 +15,15 @@ export class RpcServiceError extends RpcException implements ErrorShape {
     override readonly cause: unknown;
 
     constructor(message: string, options: ServiceErrorOptions = {}) {
-        const errorCode = options.errorCode || "RPC_SERVICE_ERROR";
-        // json rpc error
-        const statusCode = options.statusCode ?? -32603;
+        const errorCode = options.errorCode || "CONNECT_SERVICE_ERROR";
+        // grpc error
+        const statusCode = options.statusCode ?? Code.Internal;
 
         const details: ServiceErrorDetails = {
             ...options.details,
-            // add codes to detail, otherwise they might get lost in the rpc transport layer
             errorCode,
             statusCode,
-            tags: mergeTags({ details: { tags: ["rpc_service"] } }, options),
+            tags: mergeTags({ details: { tags: ["connect_service"] } }, options),
         };
 
         super({
@@ -31,7 +31,7 @@ export class RpcServiceError extends RpcException implements ErrorShape {
             errorCode,
             statusCode,
             details,
-            // add rpc status code as code for json rpc compatibility
+            // add rpc status code as code for connect/grpc compatibility
             code: statusCode,
         });
 
