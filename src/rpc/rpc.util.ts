@@ -2,6 +2,7 @@ import type { RpcResponse, RpcResponseInput, RpcErrorResponse, RpcErrorResponseI
 import type { Metadata } from "@grpc/grpc-js";
 import type { HandlerContext } from "@connectrpc/connect";
 import type { ConsumeMessage } from "amqplib";
+import type { TcpContext } from "@nestjs/microservices";
 
 /**
  * Create a JSON-RPC response object.
@@ -66,7 +67,22 @@ export function isRabbitMqContext(context: unknown): context is ConsumeMessage {
 
 export function assertRabbitMqContext(context: unknown): ConsumeMessage {
     if (!isRabbitMqContext(context)) {
-        throw new Error("Not a RabbitMQ ConsumeMessage context");
+        throw new Error("Not a RabbitMQ ConsumeMessage");
     }
     return context as ConsumeMessage;
+}
+
+export function isTcpContext(context: unknown): context is TcpContext {
+    return (
+        !!context &&
+        typeof (context as TcpContext).getSocketRef === "function" &&
+        typeof (context as TcpContext).getPattern === "function"
+    );
+}
+
+export function assertTcpContext(context: unknown): TcpContext {
+    if (!isTcpContext(context)) {
+        throw new Error("Not a TCP context");
+    }
+    return context as TcpContext;
 }
