@@ -40,6 +40,7 @@ export interface RabbitMqHandlerSetupOptions {
 }
 
 export interface RabbitMqHandlerOptions {
+    // TODO implement @RabbitSetup method decorator instead?
     /** Handler level setup options */
     setup?: RabbitMqHandlerSetupOptions;
     timeout?: number;

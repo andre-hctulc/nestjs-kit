@@ -4,19 +4,19 @@ import type { DescService } from "@bufbuild/protobuf";
 import type { ConnectTransportOptions } from "@connectrpc/connect-node";
 import { defer, mergeMap, Observable } from "rxjs";
 
-export interface ConnectRpcClientProxyConfig {
+export interface ClientConnectRpcConfig {
     transport: { customTransport: Transport } | ConnectTransportOptions;
     services: DescService | DescService[];
 }
 
-export class ConnectRpcClientProxy extends ClientProxy {
-    #config: ConnectRpcClientProxyConfig;
+export class ClientConnectRpc extends ClientProxy {
+    #config: ClientConnectRpcConfig;
     #clients = new Map<string, Record<string, Function>>();
     #transport: Transport | undefined;
     #connectPromise: Promise<void> | undefined;
     #desc: DescService[];
 
-    constructor(config: ConnectRpcClientProxyConfig) {
+    constructor(config: ClientConnectRpcConfig) {
         super();
         this.#config = config;
         this.#desc = Array.isArray(config.services) ? config.services : [config.services];
@@ -40,7 +40,7 @@ export class ConnectRpcClientProxy extends ClientProxy {
             this.#transport =
                 "customTransport" in this.#config.transport
                     ? this.#config.transport.customTransport
-                    : await this.#creteNodeTransport(this.#config.transport);
+                    : await this.#createNodeTransport(this.#config.transport);
         })();
 
         try {
@@ -51,7 +51,7 @@ export class ConnectRpcClientProxy extends ClientProxy {
         }
     }
 
-    async #creteNodeTransport(options: ConnectTransportOptions): Promise<Transport> {
+    async #createNodeTransport(options: ConnectTransportOptions): Promise<Transport> {
         const { createConnectTransport } = await import("@connectrpc/connect-node");
         return createConnectTransport(options);
     }

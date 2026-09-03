@@ -11,7 +11,7 @@ import {
 import type { ServiceClient } from "@grpc/grpc-js/build/src/make-client.js";
 import { defer, mergeMap, Observable } from "rxjs";
 
-export interface GrpcJsClientProxyConfig {
+export interface ClientGrpcJsConfig {
     address: string;
     services: Record<string, ServiceDefinition>;
     credentials?: ChannelCredentials;
@@ -23,21 +23,20 @@ export interface GrpcJsSendOptions {
     callOptions?: CallOptions;
 }
 
-export class GrpcJsClientProxy extends ClientProxy {
-    #config: GrpcJsClientProxyConfig;
+export class ClientGrpcJs extends ClientProxy {
+    #config: ClientGrpcJsConfig;
     #clients = new Map<string, ServiceClient>();
 
-    constructor(config: GrpcJsClientProxyConfig) {
+    constructor(config: ClientGrpcJsConfig) {
         super();
         this.#config = config;
-        
+
         if (!this.#config.services || Object.keys(this.#config.services).length === 0) {
             throw new Error("No gRPC service definitions provided.");
         }
 
         this.initializeSerializer({});
         this.initializeDeserializer({});
-
     }
 
     async connect(): Promise<void> {}

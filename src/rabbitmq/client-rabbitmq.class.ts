@@ -25,7 +25,7 @@ export interface RabbitMqClientSetup {
     consumeOptions?: Options.Consume;
 }
 
-export interface RabbitMqClientProxyConfig {
+export interface ClientRabbitMqConfig {
     url: string;
     exchange?: string;
     options?: SocketOptions;
@@ -44,14 +44,14 @@ export interface RabbitMqSendOptions extends Options.Publish {
 
 type ReplyCallback = (packet: WritePacket) => void;
 
-export class RabbitMqClientProxy extends ClientProxy {
-    #config: RabbitMqClientProxyConfig;
+export class ClientRabbitMq extends ClientProxy {
+    #config: ClientRabbitMqConfig;
     #channelModel: ChannelModel | undefined;
     #channel: Channel | undefined;
     #connectPromise: Promise<Channel> | undefined;
     #pendingReplies = new Map<string, ReplyCallback>();
 
-    constructor(config: RabbitMqClientProxyConfig) {
+    constructor(config: ClientRabbitMqConfig) {
         super();
         this.#config = config;
         this.initializeSerializer({});

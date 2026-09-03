@@ -1,5 +1,5 @@
 export * from "./connect-rpc.server.js";
-export * from "./connect-rpc-client-proxy.class.js";
+export * from "./client-connect-rpc.class.js";
 export * from "./connect-rpc-method.decorator.js";
 export * from "./connect-rpc-auth.types.js";
 export * from "./connect-rpc-context.decorator.js";
