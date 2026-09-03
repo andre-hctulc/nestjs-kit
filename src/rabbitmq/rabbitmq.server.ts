@@ -317,7 +317,7 @@ export class RabbitMqServer
                     } satisfies RabbitMqStreamResponse,
                     setup,
                 );
-            } else if (result !== undefined) {
+            } else {
                 this.#sendDirectReply(channel, message, { result } satisfies RabbitMqResponse, setup);
             }
             channel.ack(message);
