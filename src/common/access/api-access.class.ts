@@ -54,7 +54,5 @@ export abstract class ApiAccess {
         return access as T;
     }
 
-    readonly api_access = true;
-
-    constructor(options: ApiAccessOptions = {}) {}
+    constructor(accessOptions: ApiAccessOptions = {}) {}
 }
