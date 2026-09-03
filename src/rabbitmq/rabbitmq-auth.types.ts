@@ -1,7 +1,7 @@
 import type { ApiAccess } from "../common/index.js";
 
-declare module "@grpc/grpc-js" {
-    export interface Metadata {
+declare module "amqplib" {
+    export interface ConsumeMessage {
         apiAccess?: ApiAccess;
     }
 }
