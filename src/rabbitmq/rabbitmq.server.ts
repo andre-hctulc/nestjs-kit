@@ -79,6 +79,8 @@ export interface RabbitMqMethodPattern {
     options?: RabbitMqHandlerOptions;
 }
 
+export type RabbitMqEventPattern = RabbitMqMethodPattern;
+
 export interface RabbitMqStreamResponse {
     chunk: unknown;
     streamEnd?: boolean;

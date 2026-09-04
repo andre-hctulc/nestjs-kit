@@ -48,7 +48,7 @@ const DEFAULT_TIMEOUT = 120_000;
 /** Maximum connect call deadline in milliseconds (24 hours) */
 const MAX_TIMEOUT = 24 * 60 * 60 * 1000;
 
-export interface ConnectMethodPattern {
+export interface ConnectRpcMethodPattern {
     service: string;
     method: string;
 }
