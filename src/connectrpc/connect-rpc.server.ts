@@ -153,11 +153,6 @@ export class ConnectRpcServer
                     );
                     continue;
                 }
-                if (handler.isEventHandler) {
-                    throw new Error(
-                        `Connect RPC does not support EventPattern handlers: ${serviceDesc.typeName}.${method.localName}. Use MessagePattern instead.`,
-                    );
-                }
 
                 const isStreaming =
                     method.methodKind === "server_streaming" || method.methodKind === "bidi_streaming";

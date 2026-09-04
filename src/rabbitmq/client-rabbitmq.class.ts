@@ -8,7 +8,7 @@ import {
     type SocketOptions,
 } from "amqplib";
 import { randomUUID } from "node:crypto";
-import { defer, mergeMap, Observable } from "rxjs";
+import { connectable, defer, mergeMap, Observable, Subject } from "rxjs";
 import type {
     RabbitMqErrorResponse,
     RabbitMqHandlerOptions,
@@ -124,10 +124,27 @@ export class ClientRabbitMq extends ClientProxy {
         );
     }
 
+    emitWithOptions<TResult = any, TInput = any>(
+        pattern: MsPattern,
+        data: TInput,
+        options?: RabbitMqSendOptions,
+    ): Observable<TResult> {
+        const source = defer(async () => this.connect()).pipe(
+            mergeMap(() => this.dispatchEvent<TResult>({ pattern, data }, options)),
+        );
+        const connectableSource = connectable(source, {
+            connector: () => new Subject(),
+            resetOnDisconnect: false,
+        });
+        connectableSource.connect();
+        return connectableSource;
+    }
+
     protected override publish(
         packet: ReadPacket,
         callback: ReplyCallback,
         options?: RabbitMqSendOptions,
+        eventMode?: boolean,
     ): () => void {
         const id = "id" in packet && typeof packet.id === "string" ? packet.id : randomUUID();
         const route = normalizeRabbitPattern(packet.pattern);
@@ -153,8 +170,8 @@ export class ClientRabbitMq extends ClientProxy {
                 channel.publish(exchange, route.routingKey, Buffer.from(JSON.stringify(serializedPacket)), {
                     ...this.#config.setup?.publishOptions,
                     ...options,
-                    replyTo: this.#config.replyQueue ?? DIRECT_REPLY_TO,
-                    correlationId: id,
+                    replyTo: eventMode ? undefined : (this.#config.replyQueue ?? DIRECT_REPLY_TO),
+                    correlationId: eventMode ? undefined : id,
                     contentType: "application/json",
                     headers: {
                         ...this.#config.setup?.publishOptions?.headers,
@@ -162,6 +179,10 @@ export class ClientRabbitMq extends ClientProxy {
                         ...(deadline === undefined ? {} : { [DEADLINE_HEADER]: deadline }),
                     },
                 });
+
+                if (eventMode) {
+                    callback({ isDisposed: true });
+                }
             })
             .catch((err) => callback({ err, isDisposed: true }));
 
@@ -171,18 +192,28 @@ export class ClientRabbitMq extends ClientProxy {
         };
     }
 
-    async dispatchEvent<T = any>(packet: ReadPacket): Promise<T> {
-        const channel = await this.connect();
-        const route = normalizeRabbitPattern(packet.pattern);
-        const serializedPacket = this.serializer.serialize(packet);
-
-        const exchange = route.exchange ?? this.#config.exchange ?? "default";
-
-        channel.publish(exchange, route.routingKey, Buffer.from(JSON.stringify(serializedPacket)), {
-            ...this.#config.setup?.publishOptions,
-            contentType: "application/json",
+    protected override async dispatchEvent<T = undefined>(
+        packet: ReadPacket,
+        options?: RabbitMqSendOptions,
+    ): Promise<T> {
+        return new Promise<T>((resolve, reject) => {
+            try {
+                this.publish(
+                    packet,
+                    ({ err, isDisposed }) => {
+                        if (err) {
+                            reject(err);
+                        } else if (isDisposed) {
+                            resolve(undefined as T);
+                        }
+                    },
+                    options,
+                    true,
+                );
+            } catch (err) {
+                reject(err);
+            }
         });
-        return undefined as T;
     }
 
     #handleReply(message: ConsumeMessage | null) {

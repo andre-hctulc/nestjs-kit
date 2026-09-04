@@ -9,7 +9,7 @@ import {
     type ServiceDefinition,
 } from "@grpc/grpc-js";
 import type { ServiceClient } from "@grpc/grpc-js/build/src/make-client.js";
-import { defer, mergeMap, Observable } from "rxjs";
+import { connectable, defer, mergeMap, Observable, Subject } from "rxjs";
 
 export interface ClientGrpcJsConfig {
     address: string;
@@ -68,10 +68,27 @@ export class ClientGrpcJs extends ClientProxy {
         );
     }
 
+    emitWithOptions<TResult = any, TInput = any>(
+        pattern: MsPattern,
+        data: TInput,
+        options?: GrpcJsSendOptions,
+    ): Observable<TResult> {
+        const source = defer(async () => this.connect()).pipe(
+            mergeMap(() => this.dispatchEvent<TResult>({ pattern, data }, options)),
+        );
+        const connectableSource = connectable(source, {
+            connector: () => new Subject(),
+            resetOnDisconnect: false,
+        });
+        connectableSource.connect();
+        return connectableSource;
+    }
+
     protected override publish(
         packet: ReadPacket,
         callback: (packet: WritePacket) => void,
         options?: GrpcJsSendOptions,
+        eventMode?: boolean,
     ): () => void {
         const { service, method } = this.#resolvePattern(packet.pattern);
         const client = this.#getClient(service);
@@ -106,13 +123,28 @@ export class ClientGrpcJs extends ClientProxy {
         }
     }
 
-    async dispatchEvent<T = any>(packet: ReadPacket): Promise<T> {
-        const { service, method } = this.#resolvePattern(packet.pattern);
-        const client = this.#getClient(service);
-        await new Promise<void>((resolve, reject) => {
-            client[method](packet.data, (err: unknown) => (err ? reject(err) : resolve()));
+    protected override async dispatchEvent<T = undefined>(
+        packet: ReadPacket,
+        options?: GrpcJsSendOptions,
+    ): Promise<T> {
+        return new Promise<T>((resolve, reject) => {
+            try {
+                this.publish(
+                    packet,
+                    ({ err, isDisposed }) => {
+                        if (err) {
+                            reject(err);
+                        } else if (isDisposed) {
+                            resolve(undefined as T);
+                        }
+                    },
+                    options,
+                    true,
+                );
+            } catch (err) {
+                reject(err);
+            }
         });
-        return undefined as T;
     }
 
     #getClient(service: string): ServiceClient {

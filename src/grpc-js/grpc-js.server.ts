@@ -131,7 +131,7 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
         try {
             this.#registerServices();
         } catch (err) {
-            this.#dispatchEvent("error", err);
+            this.#emitEvent("error", err);
             throw err;
         }
 
@@ -141,7 +141,7 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
                 this.#config.credentials ?? ServerCredentials.createInsecure(),
                 (err) => {
                     if (err) {
-                        this.#dispatchEvent("error", err);
+                        this.#emitEvent("error", err);
                         reject(err);
                         return;
                     }
@@ -152,14 +152,14 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
         });
 
         callback();
-        this.#dispatchEvent("listening", this.#address);
+        this.#emitEvent("listening", this.#address);
     }
 
     #closeInitiated = false;
     close() {
         this.#closeInitiated = true;
         this.#server.forceShutdown();
-        this.#dispatchEvent("close");
+        this.#emitEvent("close");
         this.#eventListeners.clear();
     }
 
@@ -191,11 +191,6 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
                         `Skipping gRPC method registration: no MessagePattern handler found for ${serviceName}.${method}`,
                     );
                     continue;
-                }
-                if (handler.isEventHandler) {
-                    throw new Error(
-                        `gRPC does not support EventPattern handlers: ${serviceName}.${method}. Use MessagePattern instead.`,
-                    );
                 }
 
                 impl[method] = this.#handle(handler, !!def.responseStream);
@@ -482,7 +477,7 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
         return this;
     }
 
-    #dispatchEvent<EventKey extends GrpcJsServerEventType>(
+    #emitEvent<EventKey extends GrpcJsServerEventType>(
         event: EventKey,
         ...args: Parameters<GrpcJsServerEventMap[EventKey]>
     ): void {

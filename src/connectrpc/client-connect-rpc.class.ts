@@ -2,7 +2,7 @@ import { ClientProxy, type MsPattern, type ReadPacket, type WritePacket } from "
 import { createClient, type CallOptions, type Transport } from "@connectrpc/connect";
 import type { DescService } from "@bufbuild/protobuf";
 import type { ConnectTransportOptions } from "@connectrpc/connect-node";
-import { defer, mergeMap, Observable } from "rxjs";
+import { connectable, defer, mergeMap, Observable, Subject } from "rxjs";
 
 export interface ClientConnectRpcConfig {
     transport: { customTransport: Transport } | ConnectTransportOptions;
@@ -82,10 +82,27 @@ export class ClientConnectRpc extends ClientProxy {
         );
     }
 
+    emitWithOptions<TResult = any, TInput = any>(
+        pattern: MsPattern,
+        data: TInput,
+        options?: CallOptions,
+    ): Observable<TResult> {
+        const source = defer(async () => this.connect()).pipe(
+            mergeMap(() => this.dispatchEvent<TResult>({ pattern, data }, options)),
+        );
+        const connectableSource = connectable(source, {
+            connector: () => new Subject(),
+            resetOnDisconnect: false,
+        });
+        connectableSource.connect();
+        return connectableSource;
+    }
+
     protected override publish(
         packet: ReadPacket,
         callback: (packet: WritePacket) => void,
         options?: CallOptions,
+        eventMode?: boolean,
     ): () => void {
         const { service, method } = this.#resolvePattern(packet.pattern);
         let cancelled = false;
@@ -121,10 +138,28 @@ export class ClientConnectRpc extends ClientProxy {
         };
     }
 
-    async dispatchEvent<T = any>(packet: ReadPacket): Promise<T> {
-        const { service, method } = this.#resolvePattern(packet.pattern);
-        await this.#getClient(service)[method](packet.data);
-        return undefined as T;
+    protected override async dispatchEvent<T = undefined>(
+        packet: ReadPacket,
+        options?: CallOptions,
+    ): Promise<T> {
+        return new Promise<T>((resolve, reject) => {
+            try {
+                this.publish(
+                    packet,
+                    ({ err, isDisposed }) => {
+                        if (err) {
+                            reject(err);
+                        } else if (isDisposed) {
+                            resolve(undefined as T);
+                        }
+                    },
+                    options,
+                    true,
+                );
+            } catch (err) {
+                reject(err);
+            }
+        });
     }
 
     #getClient(serviceName: string): Record<string, Function> {
