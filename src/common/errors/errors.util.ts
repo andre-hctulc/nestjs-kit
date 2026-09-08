@@ -147,88 +147,88 @@ function mapToJsonRpcStatusCode(statusCode: number): number {
     return -32000; // Unknown Error
 }
 
-export function mapToGrpcStatusCode(rpcStatusCode: number): number {
-    if (rpcStatusCode >= 0 && rpcStatusCode <= 16) {
-        return rpcStatusCode; // Already a grpc status code
+export function mapToGrpcStatusCode(statusCode: number): number {
+    if (statusCode >= 0 && statusCode <= 16) {
+        return statusCode; // Already a grpc status code
     }
 
     // json rpc
-    else if (rpcStatusCode === 0) {
+    else if (statusCode === 0) {
         return 0; // OK
-    } else if (rpcStatusCode === -32600) {
+    } else if (statusCode === -32600) {
         return 3; // Invalid Argument
-    } else if (rpcStatusCode === -32601) {
+    } else if (statusCode === -32601) {
         return 16; // Unauthenticated
-    } else if (rpcStatusCode === -32602) {
+    } else if (statusCode === -32602) {
         return 7; // Permission Denied
-    } else if (rpcStatusCode === -32603) {
+    } else if (statusCode === -32603) {
         return 5; // Not Found
-    } else if (rpcStatusCode === -32604) {
+    } else if (statusCode === -32604) {
         return 6; // Already Exists
-    } else if (rpcStatusCode === -32605) {
+    } else if (statusCode === -32605) {
         return 3; // Invalid Argument
-    } else if (rpcStatusCode === -32000) {
+    } else if (statusCode === -32000) {
         return 13; // Internal Server Error
     }
 
     // http
-    else if (rpcStatusCode >= 200 && rpcStatusCode < 300) {
+    else if (statusCode >= 200 && statusCode < 300) {
         return 0; // OK
-    } else if (rpcStatusCode === 400) {
+    } else if (statusCode === 400) {
         return 3; // Invalid Argument
-    } else if (rpcStatusCode === 401) {
+    } else if (statusCode === 401) {
         return 16; // Unauthenticated
-    } else if (rpcStatusCode === 403) {
+    } else if (statusCode === 403) {
         return 7; // Permission Denied
-    } else if (rpcStatusCode === 404) {
+    } else if (statusCode === 404) {
         return 5; // Not Found
-    } else if (rpcStatusCode === 409) {
+    } else if (statusCode === 409) {
         return 6; // Already Exists
-    } else if (rpcStatusCode >= 500 && rpcStatusCode < 600) {
+    } else if (statusCode >= 500 && statusCode < 600) {
         return 13; // Internal Server Error
     }
 
     return 13; // Unknown Error
 }
 
-function mapToHttpStatusCode(rpcStatusCode: number): number {
-    if (rpcStatusCode >= 200 && rpcStatusCode < 600) {
-        return rpcStatusCode; // Already an HTTP status code
+export function mapToHttpStatusCode(statusCode: number): number {
+    if (statusCode >= 200 && statusCode < 600) {
+        return statusCode; // Already an HTTP status code
     }
 
     // json rpc
-    else if (rpcStatusCode === 0) {
+    else if (statusCode === 0) {
         return 200; // OK
-    } else if (rpcStatusCode === -32600) {
+    } else if (statusCode === -32600) {
         return 400; // Invalid Request
-    } else if (rpcStatusCode === -32601) {
+    } else if (statusCode === -32601) {
         return 401; // Unauthorized
-    } else if (rpcStatusCode === -32602) {
+    } else if (statusCode === -32602) {
         return 403; // Forbidden
-    } else if (rpcStatusCode === -32603) {
+    } else if (statusCode === -32603) {
         return 404; // Not Found
-    } else if (rpcStatusCode === -32604) {
+    } else if (statusCode === -32604) {
         return 409; // Conflict
-    } else if (rpcStatusCode === -32605) {
+    } else if (statusCode === -32605) {
         return 422; // Unprocessable Entity
-    } else if (rpcStatusCode === -32000) {
+    } else if (statusCode === -32000) {
         return 500; // Internal Server Error
     }
 
     // grpc
-    else if (rpcStatusCode === 0) {
+    else if (statusCode === 0) {
         return 200; // OK
-    } else if (rpcStatusCode === 3) {
+    } else if (statusCode === 3) {
         return 400; // Invalid Argument
-    } else if (rpcStatusCode === 16) {
+    } else if (statusCode === 16) {
         return 401; // Unauthenticated
-    } else if (rpcStatusCode === 7) {
+    } else if (statusCode === 7) {
         return 403; // Permission Denied
-    } else if (rpcStatusCode === 5) {
+    } else if (statusCode === 5) {
         return 404; // Not Found
-    } else if (rpcStatusCode === 6) {
+    } else if (statusCode === 6) {
         return 409; // Already Exists
-    } else if (rpcStatusCode === 13) {
+    } else if (statusCode === 13) {
         return 500; // Internal Server Error
     }
 

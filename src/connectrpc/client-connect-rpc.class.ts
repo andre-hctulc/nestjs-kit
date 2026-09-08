@@ -4,6 +4,11 @@ import type { DescService } from "@bufbuild/protobuf";
 import type { ConnectTransportOptions } from "@connectrpc/connect-node";
 import { connectable, defer, mergeMap, Observable, Subject } from "rxjs";
 
+/* 
+BUG
+Multiple event handlers per event not handled properly
+*/
+
 export interface ClientConnectRpcConfig {
     transport: { customTransport: Transport } | ConnectTransportOptions;
     services: DescService | DescService[];
@@ -138,10 +143,7 @@ export class ClientConnectRpc extends ClientProxy {
         };
     }
 
-    protected override async dispatchEvent<T = undefined>(
-        packet: ReadPacket,
-        options?: CallOptions,
-    ): Promise<T> {
+    protected override async dispatchEvent<T = any>(packet: ReadPacket, options?: CallOptions): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             try {
                 this.publish(

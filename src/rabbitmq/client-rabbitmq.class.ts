@@ -192,7 +192,7 @@ export class ClientRabbitMq extends ClientProxy {
         };
     }
 
-    protected override async dispatchEvent<T = undefined>(
+    protected override async dispatchEvent<T = any>(
         packet: ReadPacket,
         options?: RabbitMqSendOptions,
     ): Promise<T> {

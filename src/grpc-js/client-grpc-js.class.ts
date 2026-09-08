@@ -11,6 +11,11 @@ import {
 import type { ServiceClient } from "@grpc/grpc-js/build/src/make-client.js";
 import { connectable, defer, mergeMap, Observable, Subject } from "rxjs";
 
+/* 
+BUG
+Multiple event handlers per event not handled properly
+*/
+
 export interface ClientGrpcJsConfig {
     address: string;
     services: Record<string, ServiceDefinition>;
@@ -123,7 +128,7 @@ export class ClientGrpcJs extends ClientProxy {
         }
     }
 
-    protected override async dispatchEvent<T = undefined>(
+    protected override async dispatchEvent<T = any>(
         packet: ReadPacket,
         options?: GrpcJsSendOptions,
     ): Promise<T> {

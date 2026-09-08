@@ -84,9 +84,11 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
 
         const at = getErrorLocationDescription(host);
         if (unexpected) {
-            this.#logger.error(`Unexpected error at ${at}`, exception);
+            this.#logger.error(`Unexpected error at ${at}`);
+            this.#logger.error(exception)
         } else {
-            this.#logger.debug(`Error at ${at}:`, exception);
+            this.#logger.debug(`Error at ${at}`);
+            this.#logger.debug(error);
         }
 
         return await sendError(host, error, error.statusCode);
