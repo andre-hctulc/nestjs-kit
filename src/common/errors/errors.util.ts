@@ -147,7 +147,11 @@ function mapToJsonRpcStatusCode(statusCode: number): number {
     return -32000; // Unknown Error
 }
 
-export function mapToGrpcStatusCode(statusCode: number): number {
+export function mapToGrpcStatusCode(statusCode: unknown): number {
+    if (typeof statusCode !== "number") {
+        return 13; // Unknown Error
+    }
+    
     if (statusCode >= 0 && statusCode <= 16) {
         return statusCode; // Already a grpc status code
     }
@@ -191,7 +195,11 @@ export function mapToGrpcStatusCode(statusCode: number): number {
     return 13; // Unknown Error
 }
 
-export function mapToHttpStatusCode(statusCode: number): number {
+export function mapToHttpStatusCode(statusCode: unknown): number {
+    if (typeof statusCode !== "number") {
+        return 500;
+    }
+
     if (statusCode >= 200 && statusCode < 600) {
         return statusCode; // Already an HTTP status code
     }
