@@ -9,7 +9,16 @@ import { z } from "zod";
  */
 @Injectable()
 export class ZQueryParamPipe<T> extends ZPipe<T> implements PipeTransform {
-    constructor(schema?: ZodType<T>, options?: ZPipeOptions) {
-        super(zodCoerceQueryParam(schema || z.string()) as ZodType<T>, options);
+    constructor(schema?: ZodType<T> | boolean, options?: ZPipeOptions) {
+        super(
+            zodCoerceQueryParam(
+                schema === false
+                    ? z.string().optional()
+                    : schema === undefined || schema === true
+                      ? z.string()
+                      : schema,
+            ) as ZodType<T>,
+            options,
+        );
     }
 }
