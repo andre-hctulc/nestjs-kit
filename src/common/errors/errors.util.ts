@@ -105,7 +105,11 @@ export function getErrorLocationDescription(host: ArgumentsHost): string {
     }
 }
 
-function mapToJsonRpcStatusCode(statusCode: number): number {
+export function mapToJsonRpcStatusCode(statusCode: unknown): number {
+    if (typeof statusCode !== "number") {
+        return -32000; // Unknown Error
+    }
+
     if (statusCode <= 0) {
         return statusCode; // Already a JSON-RPC status code
     }
@@ -151,7 +155,7 @@ export function mapToGrpcStatusCode(statusCode: unknown): number {
     if (typeof statusCode !== "number") {
         return 13; // Unknown Error
     }
-    
+
     if (statusCode >= 0 && statusCode <= 16) {
         return statusCode; // Already a grpc status code
     }
