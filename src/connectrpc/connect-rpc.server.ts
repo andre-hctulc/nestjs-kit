@@ -145,7 +145,8 @@ export class ConnectRpcServer
             return h1;
         }
 
-        if (!p1.service && p1.service === this.#getDefaultService()) {
+        const defaultService = this.#getDefaultService();
+        if (p1.service === defaultService) {
             const h2 = this.getHandlerByPattern(
                 this.normalizePattern({ service: undefined, method: p1.method } as any),
             );
