@@ -13,13 +13,13 @@ export function ConnectRpcMethod(pattern: ConnectRpcMethodPattern): MethodDecora
 export function ConnectRpcMethod(service: string, method: string): MethodDecorator;
 export function ConnectRpcMethod(method: string): MethodDecorator;
 export function ConnectRpcMethod(
-    serviceOrMethod: ConnectRpcMethodPattern | string,
+    patternLike: ConnectRpcMethodPattern | string,
     method?: string,
 ): MethodDecorator {
-    if (typeof serviceOrMethod === "string" && typeof method === "string") {
-        return MessagePattern({ service: serviceOrMethod, method: method });
-    } else if (typeof serviceOrMethod === "string") {
-        return MessagePattern({ method: serviceOrMethod });
+    if (typeof patternLike === "string" && typeof method === "string") {
+        return MessagePattern({ service: patternLike, method: method });
+    } else if (typeof patternLike === "string") {
+        return MessagePattern({ method: patternLike });
     }
-    return MessagePattern(serviceOrMethod);
+    return MessagePattern(patternLike);
 }

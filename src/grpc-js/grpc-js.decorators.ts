@@ -11,16 +11,12 @@ export const GrpcJsContext = createParamDecorator<Metadata>((_data: unknown, ctx
 
 export function GrpcJsMethod(pattern: GrpcJsMethodPattern): MethodDecorator;
 export function GrpcJsMethod(service: string, method: string): MethodDecorator;
-export function GrpcJsMethod(methodRef: string): MethodDecorator;
+export function GrpcJsMethod(method: string): MethodDecorator;
 export function GrpcJsMethod(patternLike: GrpcJsMethodPattern | string, method?: string): MethodDecorator {
     if (typeof patternLike === "string" && typeof method === "string") {
         return MessagePattern({ service: patternLike, method: method });
     } else if (typeof patternLike === "string") {
-        const [service, methodName] = patternLike.split(".");
-        if (!methodName) {
-            return MessagePattern({ method: service });
-        }
-        return MessagePattern({ service, method: methodName });
+        return MessagePattern({ method: patternLike });
     }
     return MessagePattern(patternLike);
 }
