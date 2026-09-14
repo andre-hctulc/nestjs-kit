@@ -3,6 +3,8 @@ import { createClient, type CallOptions, type Transport } from "@connectrpc/conn
 import type { DescService } from "@bufbuild/protobuf";
 import type { ConnectTransportOptions } from "@connectrpc/connect-node";
 import { connectable, defer, mergeMap, Observable, Subject } from "rxjs";
+import { capitalize, decapitalize } from "../common/util/system/system.util.js";
+import { normalizeConnectPattern } from "./connect-system.util.js";
 
 /* 
 BUG
@@ -103,13 +105,29 @@ export class ClientConnectRpc extends ClientProxy {
         return connectableSource;
     }
 
+    #resolveService(service: string | undefined) {
+        if (!service) {
+            const keys = Object.keys(this.#config.services);
+            if (keys.length === 0) {
+                return "default";
+            }
+            service = keys[0];
+        }
+        return service;
+    }
+
     protected override publish(
         packet: ReadPacket,
         callback: (packet: WritePacket) => void,
         options?: CallOptions,
         eventMode?: boolean,
     ): () => void {
-        const { service, method } = this.#resolvePattern(packet.pattern);
+        const { service, method } = normalizeConnectPattern(packet.pattern);
+
+        const resolvedService = this.#resolveService(service);
+        const methodCapitalized = capitalize(method);
+        const methodDecapitalized = decapitalize(method);
+
         let cancelled = false;
         const controller = new AbortController();
         const abort = () => controller.abort();
@@ -120,7 +138,14 @@ export class ClientConnectRpc extends ClientProxy {
         }
         const callOptions: CallOptions = { ...options, signal: controller.signal };
 
-        void Promise.resolve(this.#getClient(service)[method](packet.data, callOptions))
+        const client = this.#getClient(resolvedService);
+
+        const call = client[methodCapitalized] || client[methodDecapitalized];
+        if (!call) {
+            throw new Error(`Method not found on client: ${resolvedService}.${method}`);
+        }
+
+        void Promise.resolve(call.call(client, packet.data, callOptions))
             .then(async (result: unknown) => {
                 if (
                     result &&
@@ -180,16 +205,5 @@ export class ClientConnectRpc extends ClientProxy {
         this.#clients.set(serviceName, client);
 
         return client;
-    }
-
-    #resolvePattern(pattern: MsPattern): { service: string; method: string } {
-        if (typeof pattern === "object" && pattern && "service" in pattern && "method" in pattern) {
-            const { service, method } = pattern as { service: string; method: string };
-            return { service, method };
-        }
-        const [service, ...methodParts] = String(pattern).split(".");
-        if (!service || methodParts.length === 0)
-            throw new Error(`Invalid Connect pattern: ${String(pattern)}`);
-        return { service, method: methodParts.join(".") };
     }
 }

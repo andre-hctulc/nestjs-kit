@@ -146,7 +146,7 @@ export class ClientRabbitMq extends ClientProxy {
         options?: RabbitMqSendOptions,
         eventMode?: boolean,
     ): () => void {
-        const id = "id" in packet && typeof packet.id === "string" ? packet.id : randomUUID();
+        const id = randomUUID();
         const route = normalizeRabbitPattern(packet.pattern);
         let timer: ReturnType<typeof setTimeout> | undefined;
         const exchange = route.exchange ?? this.#config.exchange ?? "default";

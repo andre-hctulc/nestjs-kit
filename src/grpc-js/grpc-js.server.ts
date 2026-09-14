@@ -1,4 +1,10 @@
-import { type CustomTransportStrategy, type MsPattern, Server, Transport } from "@nestjs/microservices";
+import {
+    type CustomTransportStrategy,
+    type MessageHandler,
+    type MsPattern,
+    Server,
+    Transport,
+} from "@nestjs/microservices";
 import {
     Server as GrpcServer,
     Metadata,
@@ -13,6 +19,7 @@ import {
 import { Logger } from "@nestjs/common";
 import {
     isWritableCall,
+    normalizeGrpcPattern,
     type AnyGrpcCall,
     type AnyGrpcCallback,
     type WritableGrpcCall,
@@ -44,7 +51,7 @@ export interface GrpcJsServerConfig {
 }
 
 export interface GrpcJsMethodPattern {
-    service: string;
+    service?: string;
     method: string;
 }
 
@@ -164,16 +171,37 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
     }
 
     protected override normalizePattern(pattern: MsPattern): string {
-        if (typeof pattern === "string") {
-            return pattern;
+        return JSON.stringify(normalizeGrpcPattern(pattern));
+    }
+
+    #getDefaultService(): string | undefined {
+        return this.#config.services && Object.keys(this.#config.services).length > 0
+            ? Object.keys(this.#config.services)[0]
+            : undefined;
+    }
+
+    #getHandlerByPattern(pattern: MsPattern): MessageHandler | undefined {
+        const normalizedPattern = normalizeGrpcPattern(pattern);
+        const p1 = {
+            service: normalizedPattern.service,
+            method: normalizedPattern.method,
+        };
+
+        const h1 = this.getHandlerByPattern(this.normalizePattern(p1 as MsPattern));
+        if (h1) {
+            return h1;
         }
-        if (typeof pattern === "object" && pattern !== null && "service" in pattern && "method" in pattern) {
-            const { service, method } = pattern as any;
-            if (service && method) {
-                return `${service}.${method}`;
+
+        if (!p1.service && p1.service === this.#getDefaultService()) {
+            const h2 = this.getHandlerByPattern(
+                this.normalizePattern({ service: undefined, method: p1.method } as any),
+            );
+            if (h2) {
+                return h2;
             }
         }
-        return JSON.stringify(pattern);
+
+        return undefined;
     }
 
     #registerServices() {
@@ -183,8 +211,10 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
             for (const [method, def] of Object.entries(serviceDef) as Array<
                 [string, { path?: string; responseStream?: boolean }]
             >) {
-                const patternCandidates = this.#patternCandidates(serviceName, method, def.path);
-                const handler = this.#resolveMessageHandler(patternCandidates);
+                const handler = this.#getHandlerByPattern({
+                    service: serviceName,
+                    method,
+                });
 
                 if (!handler) {
                     this.#logger.warn(
@@ -221,12 +251,10 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
             };
 
             const onCancelled = () => {
-                // BUG May override original error/abort reason
                 abortController.abort(createAbortError("Request was cancelled by the client"));
             };
 
             const onClose = () => {
-                // BUG May override original error/abort reason
                 abortController.abort(createAbortError("Request was closed"));
             };
 
@@ -278,33 +306,6 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
                 eventfulCall.removeListener?.("close", onClose);
             }
         };
-    }
-
-    #patternCandidates(serviceName: string, methodName: string, path?: string): unknown[] {
-        const candidates: unknown[] = [
-            { service: serviceName, method: methodName },
-            `${serviceName}.${methodName}`,
-            { cmd: `${serviceName}.${methodName}` },
-            methodName,
-        ];
-
-        if (path) {
-            candidates.push(path);
-        }
-
-        return candidates;
-    }
-
-    #resolveMessageHandler(candidates: unknown[]): GrpcMessageHandler | null {
-        for (const candidate of candidates) {
-            const key = this.normalizePattern(candidate as any);
-            const handler = this.getHandlerByPattern(this.getRouteFromPattern(key));
-            if (handler) {
-                return handler;
-            }
-        }
-
-        return null;
     }
 
     async #writeStreamingResult(result: unknown, call: WritableGrpcCall, signal: AbortSignal): Promise<void> {

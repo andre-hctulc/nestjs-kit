@@ -21,6 +21,8 @@ import http2, { type ServerOptions } from "node:http2";
 import { isObservable } from "rxjs";
 import { unwrapBySchema, wrapBySchema } from "./value.util.js";
 import {
+    capitalize,
+    decapitalize,
     firstValueFromObservable,
     isAsyncGenerator,
     isAsyncIterable,
@@ -29,8 +31,9 @@ import {
     raceWithSignal,
     resolveFinalTimeout,
 } from "../common/util/system/system.util.js";
-import { getConnectClientDeadline } from "./connect-system.util.js";
+import { getConnectClientDeadline, normalizeConnectPattern } from "./connect-system.util.js";
 import { mapToGrpcStatusCode } from "../common/index.js";
+import { normalizeGrpcPattern } from "../grpc-js/grpc-system.util.js";
 
 export interface ConnectRpcServerConfig {
     address: string;
@@ -49,7 +52,7 @@ const DEFAULT_TIMEOUT = 120_000;
 const MAX_TIMEOUT = 24 * 60 * 60 * 1000;
 
 export interface ConnectRpcMethodPattern {
-    service: string;
+    service?: string;
     method: string;
 }
 
@@ -123,16 +126,35 @@ export class ConnectRpcServer
     }
 
     protected override normalizePattern(pattern: MsPattern): string {
-        if (typeof pattern === "string") {
-            return pattern;
+        return JSON.stringify(normalizeConnectPattern(pattern));
+    }
+
+    #getDefaultService(): string | undefined {
+        return this.#desc.length ? this.#desc[0].name : undefined;
+    }
+
+    #getHandlerByPattern(pattern: MsPattern): MessageHandler | undefined {
+        const normalizedPattern = normalizeConnectPattern(pattern);
+        const p1 = {
+            service: normalizedPattern.service,
+            method: normalizedPattern.method,
+        };
+
+        const h1 = this.getHandlerByPattern(this.normalizePattern(p1 as MsPattern));
+        if (h1) {
+            return h1;
         }
-        if (typeof pattern === "object" && pattern !== null && "service" in pattern && "method" in pattern) {
-            const { service, method } = pattern as any;
-            if (service && method) {
-                return `${service}.${method}`;
+
+        if (!p1.service && p1.service === this.#getDefaultService()) {
+            const h2 = this.getHandlerByPattern(
+                this.normalizePattern({ service: undefined, method: p1.method } as any),
+            );
+            if (h2) {
+                return h2;
             }
         }
-        return JSON.stringify(pattern);
+
+        return undefined;
     }
 
     #registerServices(router: ConnectRouter) {
@@ -140,12 +162,10 @@ export class ConnectRpcServer
             const impl: Record<string, any> = {};
 
             for (const method of serviceDesc.methods) {
-                const candidates = this.#patternCandidates(
-                    serviceDesc.typeName,
-                    method.localName,
-                    method.name,
-                );
-                const handler = this.#resolveMessageHandler(candidates);
+                const handler = this.#getHandlerByPattern({
+                    service: serviceDesc.name,
+                    method: method.localName,
+                });
 
                 if (!handler) {
                     this.#logger.warn(
@@ -291,26 +311,6 @@ export class ConnectRpcServer
             signal.removeEventListener("abort", onAbort);
             subscription.unsubscribe();
         }
-    }
-
-    #patternCandidates(serviceName: string, localMethodName: string, methodName: string): unknown[] {
-        return [
-            { service: serviceName, method: localMethodName },
-            { service: serviceName, method: methodName },
-            `${serviceName}.${localMethodName}`,
-            `${serviceName}.${methodName}`,
-            localMethodName,
-            methodName,
-        ];
-    }
-
-    #resolveMessageHandler(candidates: unknown[]): MessageHandler | null {
-        for (const candidate of candidates) {
-            const pattern = this.normalizePattern(candidate as any);
-            const handler = this.getHandlerByPattern(pattern);
-            if (handler) return handler;
-        }
-        return null;
     }
 
     #toConnectError(err: any): ConnectError {

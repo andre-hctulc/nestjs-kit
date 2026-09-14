@@ -10,6 +10,8 @@ import {
 } from "@grpc/grpc-js";
 import type { ServiceClient } from "@grpc/grpc-js/build/src/make-client.js";
 import { connectable, defer, mergeMap, Observable, Subject } from "rxjs";
+import { normalizeGrpcPattern } from "./grpc-system.util.js";
+import { capitalize, decapitalize } from "../common/util/system/system.util.js";
 
 /* 
 BUG
@@ -89,16 +91,42 @@ export class ClientGrpcJs extends ClientProxy {
         return connectableSource;
     }
 
+    #resolveService(service: string | undefined) {
+        if (!service) {
+            const keys = Object.keys(this.#config.services);
+            if (keys.length === 0) {
+                return "default";
+            }
+            service = keys[0];
+        }
+        return service;
+    }
+
     protected override publish(
         packet: ReadPacket,
         callback: (packet: WritePacket) => void,
         options?: GrpcJsSendOptions,
         eventMode?: boolean,
     ): () => void {
-        const { service, method } = this.#resolvePattern(packet.pattern);
-        const client = this.#getClient(service);
-        const call = client[method] as Function;
-        const methodDefinition = this.#config.services[service]?.[method];
+        const { service, method } = normalizeGrpcPattern(packet.pattern);
+        const methodCapitalized = capitalize(method);
+        const methodDecapitalized = decapitalize(method);
+        const resolvedService = this.#resolveService(service);
+
+        const client = this.#getClient(resolvedService);
+
+        const call = client[methodCapitalized] || client[methodDecapitalized];
+        if (!call) {
+            throw new Error(`Method not found on client: ${resolvedService}.${method}`);
+        }
+
+        const methodDefinition =
+            this.#config.services[resolvedService]?.[methodCapitalized] ||
+            this.#config.services[resolvedService]?.[methodDecapitalized];
+        if (!methodDefinition) {
+            throw new Error(`Method definition not found: ${resolvedService}.${method}`);
+        }
+
         let cancelled = false;
 
         try {
@@ -166,15 +194,5 @@ export class ClientGrpcJs extends ClientProxy {
         );
         this.#clients.set(service, client);
         return client;
-    }
-
-    #resolvePattern(pattern: MsPattern): { service: string; method: string } {
-        if (typeof pattern === "object" && pattern && "service" in pattern && "method" in pattern) {
-            const { service, method } = pattern as { service: string; method: string };
-            return { service, method };
-        }
-        const [service, ...methodParts] = String(pattern).split(".");
-        if (!service || methodParts.length === 0) throw new Error(`Invalid gRPC pattern: ${String(pattern)}`);
-        return { service, method: methodParts.join(".") };
     }
 }

@@ -11,19 +11,15 @@ export const ConnectRpcContext = createParamDecorator<HandlerContext>((_data: un
 
 export function ConnectRpcMethod(pattern: ConnectRpcMethodPattern): MethodDecorator;
 export function ConnectRpcMethod(service: string, method: string): MethodDecorator;
-export function ConnectRpcMethod(methodRef: string): MethodDecorator;
+export function ConnectRpcMethod(method: string): MethodDecorator;
 export function ConnectRpcMethod(
-    patternLike: ConnectRpcMethodPattern | string,
+    serviceOrMethod: ConnectRpcMethodPattern | string,
     method?: string,
 ): MethodDecorator {
-    if (typeof patternLike === "string" && typeof method === "string") {
-        return MessagePattern({ service: patternLike, method: method });
-    } else if (typeof patternLike === "string") {
-        const [service, methodName] = patternLike.split(".");
-        if (!methodName) {
-            return MessagePattern({ method: service });
-        }
-        return MessagePattern({ service, method: methodName });
+    if (typeof serviceOrMethod === "string" && typeof method === "string") {
+        return MessagePattern({ service: serviceOrMethod, method: method });
+    } else if (typeof serviceOrMethod === "string") {
+        return MessagePattern({ method: serviceOrMethod });
     }
-    return MessagePattern(patternLike);
+    return MessagePattern(serviceOrMethod);
 }

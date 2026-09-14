@@ -15,7 +15,7 @@ export class ServiceError extends Error implements ErrorShape {
 
         const details: ServiceErrorDetails = {
             ...options.details,
-            // add codes to detail, otherwise they might get lost in transport layer (rpc etc.)
+            // add codes to details, otherwise they might get lost in transport layer (rpc etc.)
             errorCode,
             statusCode,
             tags: mergeTags({ details: { tags: ["service"] } }, options),

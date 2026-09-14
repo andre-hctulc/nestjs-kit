@@ -18,7 +18,7 @@ import {
     resolveFinalTimeout,
 } from "../common/util/system/system.util.js";
 import { toErrorShape, type ErrorShape } from "../common/errors/index.js";
-import { normalizeAndSerializeRabbitPattern } from "./rabbit-system.util.js";
+import { normalizeRabbitPattern } from "./rabbit-system.util.js";
 
 export interface RabbitMqDlOptions {
     /**
@@ -130,7 +130,7 @@ export class RabbitMqServer
     }
 
     protected override normalizePattern(pattern: MsPattern): string {
-        return normalizeAndSerializeRabbitPattern(pattern);
+        return JSON.stringify(normalizeRabbitPattern(pattern));
     }
 
     #listening = false;

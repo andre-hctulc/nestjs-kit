@@ -1,3 +1,7 @@
+import type { MsPattern } from "@nestjs/microservices";
+import type { ConnectRpcMethodPattern } from "./connect-rpc.server.js";
+import { decapitalize } from "../common/util/system/system.util.js";
+
 function parseTimeoutMs(value: string): number | undefined {
     const match = /^(\d+)([HMSmun])$/.exec(value.trim());
     if (!match) {
@@ -50,4 +54,31 @@ export function getConnectClientDeadline(headers: Headers): Date | undefined {
     }
 
     return new Date(Date.now() + timeoutMs);
+}
+
+export function normalizeConnectPattern(pattern: MsPattern): ConnectRpcMethodPattern {
+    let obj: any;
+    if (typeof pattern === "string") {
+        if (pattern.startsWith("{")) {
+            try {
+                const parsed = JSON.parse(pattern);
+                if (typeof parsed === "object" && parsed !== null && "method" in parsed) {
+                    obj = parsed;
+                } else {
+                    throw new Error("Invalid connect pattern string");
+                }
+            } catch {
+                obj = { method: pattern };
+            }
+        } else {
+            obj = { method: pattern };
+        }
+    } else if (typeof pattern === "object" && pattern !== null && "method" in pattern) {
+        obj = pattern;
+    }
+
+    return {
+        method: decapitalize(String(obj.method)),
+        service: obj.service ? String(obj.service) : undefined,
+    };
 }

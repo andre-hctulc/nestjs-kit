@@ -198,3 +198,12 @@ export function isGenerator(value: unknown): value is Generator<unknown> {
 export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
     return !!value && typeof (value as any)[Symbol.asyncIterator] === "function";
 }
+export function decapitalize(value: string): string {
+    if (!value) return value;
+    return value.charAt(0).toLowerCase() + value.slice(1);
+}
+
+export function capitalize(value: string): string {
+    if (!value) return value;
+    return value.charAt(0).toUpperCase() + value.slice(1);
+}

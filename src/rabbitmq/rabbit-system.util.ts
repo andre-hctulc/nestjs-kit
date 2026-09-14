@@ -5,6 +5,16 @@ export function normalizeRabbitPattern(pattern: MsPattern): RabbitMqMethodPatter
     let obj: Record<string, any> = {};
 
     if (typeof pattern === "string") {
+        if (pattern.startsWith("{")) {
+            try {
+                const parsed = JSON.parse(pattern);
+                if (typeof parsed === "object" && parsed !== null && "routingKey" in parsed) {
+                    obj = parsed;
+                }
+            } catch {
+                obj = { routingKey: pattern };
+            }
+        }
         obj = { routingKey: pattern };
     } else if (typeof pattern === "object" && pattern !== null && "routingKey" in pattern) {
         obj = pattern;
@@ -19,8 +29,4 @@ export function normalizeRabbitPattern(pattern: MsPattern): RabbitMqMethodPatter
         connection: obj.connection,
         options: obj.options,
     };
-}
-
-export function normalizeAndSerializeRabbitPattern(pattern: MsPattern): string {
-    return JSON.stringify(normalizeRabbitPattern(pattern));
 }
