@@ -17,7 +17,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
         let unexpected: boolean;
 
         // ServiceError
-        if (ServiceError.isServiceError(exception)) {
+        if (ServiceError.isServiceErrorShape(exception)) {
             unexpected = false;
             if (exception.details?.private === true) {
                 error = {
@@ -85,7 +85,7 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
         const at = getErrorLocationDescription(host);
         if (unexpected) {
             this.#logger.error(`Unexpected error at ${at}`);
-            this.#logger.error(exception)
+            this.#logger.error(exception);
         } else {
             this.#logger.debug(`Error at ${at}`);
             this.#logger.debug(error);

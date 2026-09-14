@@ -258,7 +258,10 @@ export function toErrorShape(error: unknown, fallbackMessage?: string | true): E
         return error as ErrorShape;
     }
 
-    const message = error instanceof Error ? error.message : String(error);
+    const message =
+        error instanceof Error || (typeof error === "object" && error !== null && "message" in error)
+            ? String(error.message)
+            : String(error);
     return {
         errorCode: "INTERNAL_SERVER_ERROR",
         statusCode: 500,

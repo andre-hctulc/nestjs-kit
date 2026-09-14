@@ -28,9 +28,10 @@ export class ServiceError extends Error implements ErrorShape {
         this.details = details;
     }
 
-    static isServiceError(error: unknown): error is ErrorShape & Error {
+    static isServiceErrorShape(error: unknown): error is ErrorShape {
+        if (!error || typeof error !== "object") return false;
+
         return (
-            error instanceof Error &&
             typeof (error as any).errorCode === "string" &&
             typeof (error as any).statusCode === "number" &&
             ((typeof (error as any).details === "object" && (error as any).details !== null) ||
