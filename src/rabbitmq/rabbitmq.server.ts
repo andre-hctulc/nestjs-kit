@@ -466,24 +466,28 @@ export class RabbitMqServer
 
         return new Promise<void>((resolve, reject) => {
             let settled = false;
-            const cleanup = () => signal?.removeEventListener("abort", onAbort);
-            const complete = () => {
-                if (settled) return;
-                settled = true;
-                cleanup();
-                resolve();
-            };
             const fail = (error: unknown) => {
                 if (settled) return;
                 settled = true;
                 cleanup();
                 reject(error);
             };
-            const subscription = observable.subscribe({ next: onValue, complete, error: fail });
+
             const onAbort = () => {
                 subscription.unsubscribe();
                 fail(signal?.reason ?? new Error("RabbitMQ message handler timed out"));
             };
+
+            const cleanup = () => signal?.removeEventListener("abort", onAbort);
+
+            const complete = () => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                resolve();
+            };
+            
+            const subscription = observable.subscribe({ next: onValue, complete, error: fail });
 
             signal?.addEventListener("abort", onAbort, { once: true });
             if (signal?.aborted) onAbort();
