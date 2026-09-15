@@ -6,19 +6,17 @@ import type { ErrorShape } from "./error-shape.interface.js";
 /**
  * A utility function to send errors in a consistent way across different contexts (HTTP, RPC, WebSockets).
  */
-export async function sendError(
-    host: ArgumentsHost,
-    errorObject: any,
-    unmappedStatusCode: number,
-): Promise<any> {
+export async function sendError(host: ArgumentsHost, errorObject: ErrorShape): Promise<any> {
     const contextType = host.getType();
+    const originalStatusCode = errorObject.statusCode;
+    let error: ErrorShape & { code?: number } = { ...errorObject };
 
     switch (contextType) {
         case "http": {
             const http = host.switchToHttp();
             const res = http.getResponse<FastifyReply>();
-            const mappedStatusCode = mapToHttpStatusCode(unmappedStatusCode);
-            res.status(mappedStatusCode).header("Content-Type", "application/json").send(errorObject);
+            const mappedStatusCode = mapToHttpStatusCode(originalStatusCode);
+            res.status(mappedStatusCode).header("Content-Type", "application/json").send(error);
             break;
         }
         case "rpc":
@@ -28,14 +26,14 @@ export async function sendError(
             let mappedStatusCode: number;
 
             if (isGrpcLike) {
-                mappedStatusCode = mapToGrpcStatusCode(unmappedStatusCode);
+                mappedStatusCode = mapToGrpcStatusCode(originalStatusCode);
             } else {
-                mappedStatusCode = mapToJsonRpcStatusCode(unmappedStatusCode);
+                mappedStatusCode = mapToJsonRpcStatusCode(originalStatusCode);
             }
 
             // Add rpc status code to the error object if it doesn't already have one
-            if (errorObject && typeof errorObject === "object") {
-                errorObject.code = mappedStatusCode;
+            if (error && typeof error === "object") {
+                error.code = mappedStatusCode;
             }
 
             return rxjs.throwError(() => errorObject);

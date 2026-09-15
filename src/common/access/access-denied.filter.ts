@@ -19,6 +19,6 @@ export class AccessDeniedExceptionFilter implements ExceptionFilter<AccessDenied
             details: {},
         };
 
-        return await sendError(host, errorObj, errorObj.statusCode);
+        return await sendError(host, errorObj);
     }
 }

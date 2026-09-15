@@ -23,6 +23,6 @@ export class ZPipeExceptionFilter implements ExceptionFilter {
         this.#logger.debug(`Validation error at ${at}`);
         this.#logger.debug(prettifyError(exception.zodError));
 
-        return await sendError(host, errObj, errObj.statusCode);
+        return await sendError(host, errObj);
     }
 }

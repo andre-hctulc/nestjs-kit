@@ -441,8 +441,7 @@ export class GrpcJsServer extends Server<GrpcJsServerEventMap, string> implement
 
         const message = err?.message || "Internal grpc service error";
         const details = err.details && typeof err.details === "object" ? err.details : {};
-        const statusCode =
-            typeof err?.statusCode === "number" ? mapToGrpcStatusCode(err.statusCode) : status.INTERNAL;
+        const statusCode = mapToGrpcStatusCode(err.statusCode);
 
         const metadata = new Metadata();
         const detailsJson = JSON.stringify(details);

@@ -335,8 +335,7 @@ export class ConnectRpcServer
 
         const message = err?.message || "Internal connect rpc service error";
         const details = err.details && typeof err.details === "object" ? err.details : {};
-        const statusCode =
-            typeof err?.statusCode === "number" ? mapToGrpcStatusCode(err.statusCode) : Code.Internal;
+        const statusCode = mapToGrpcStatusCode(err.statusCode);
         const outgoingDetails = this.#toOutgoingDetails(details);
 
         return new ConnectError(message, statusCode, undefined, outgoingDetails, err);

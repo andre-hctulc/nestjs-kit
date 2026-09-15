@@ -91,6 +91,6 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
             this.#logger.debug(error);
         }
 
-        return await sendError(host, error, error.statusCode);
+        return await sendError(host, error);
     }
 }
