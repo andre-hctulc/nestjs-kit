@@ -69,7 +69,12 @@ export class ClientRabbitMq extends ClientProxy {
         this.#connectPromise = (async () => {
             const address = this.#config.url ?? "amqp://localhost";
             this.#channelModel = await connect(address, this.#config.options);
+            this.#channelModel.on("error", (err) => this.#handleConnectionError(err));
+            this.#channelModel.on("close", () => this.#handleConnectionClose());
+
             this.#channel = await this.#channelModel.createChannel();
+            this.#channel.on("error", (err) => this.#handleConnectionError(err));
+
             await this.#channel.consume(
                 this.#config.replyQueue ?? DIRECT_REPLY_TO,
                 (message) => this.#handleReply(message),
@@ -106,6 +111,29 @@ export class ClientRabbitMq extends ClientProxy {
 
     unwrap<T>(): T {
         return this.#channelModel as T;
+    }
+
+    #handleConnectionError(err: unknown) {
+        this.#rejectPendingReplies(err instanceof Error ? err : new Error(String(err)));
+        this.#resetConnectionState();
+    }
+
+    #handleConnectionClose() {
+        this.#rejectPendingReplies(new Error("RabbitMQ connection closed"));
+        this.#resetConnectionState();
+    }
+
+    #rejectPendingReplies(err: Error) {
+        for (const callback of this.#pendingReplies.values()) {
+            callback({ err, isDisposed: true });
+        }
+        this.#pendingReplies.clear();
+    }
+
+    #resetConnectionState() {
+        this.#channel = undefined;
+        this.#channelModel = undefined;
+        this.#connectPromise = undefined;
     }
 
     sendWithOptions<TResult = any, TInput = any>(

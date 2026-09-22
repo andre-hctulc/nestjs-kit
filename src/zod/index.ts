@@ -4,3 +4,4 @@ export * from "./zod-util.js";
 export * from "./zod-query.pipe.js";
 export * from "./zod-query-param.pipe.js";
 export * from "./zod-pipe.error.js";
+export * from "./zod-bool-param.pipe.js";

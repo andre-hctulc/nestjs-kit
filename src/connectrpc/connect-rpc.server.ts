@@ -93,6 +93,7 @@ export class ConnectRpcServer
     }
 
     #listening = false;
+    #started = false;
     async listen(callback: () => void) {
         if (this.#listening) {
             throw new Error("Listen already attempted");
@@ -111,10 +112,17 @@ export class ConnectRpcServer
 
         await new Promise<void>((resolve, reject) => {
             this.#server = http2.createServer(this.#config.serverOptions || {}, handler);
-            this.#server.once("error", (err) => {
+            this.#server.on("error", (err) => {
+                if (this.#started) {
+                    this.#logger.error("Connect RPC server error", err);
+                    return;
+                }
                 reject(err);
             });
-            this.#server.listen(port, host, resolve);
+            this.#server.listen(port, host, () => {
+                this.#started = true;
+                resolve();
+            });
         });
 
         callback();
