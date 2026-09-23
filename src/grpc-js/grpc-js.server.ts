@@ -50,10 +50,12 @@ export interface GrpcJsServerConfig {
     credentials?: ServerCredentials;
 }
 
-export interface GrpcJsMethodPattern {
+export interface GrpcMsPattern {
     service?: string;
     method: string;
 }
+
+export type GrpcEventPattern = GrpcMsPattern;
 
 type GrpcJsServerEventMap = {
     listening: (address: string) => void;

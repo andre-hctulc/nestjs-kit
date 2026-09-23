@@ -71,7 +71,7 @@ type MessageHandler = ((...args: any[]) => any) & {
     next?: MessageHandler;
 };
 
-export interface RabbitMqMethodPattern {
+export interface RabbitMsPattern {
     exchange?: string;
     connection?: string;
     routingKey: string;
@@ -80,7 +80,7 @@ export interface RabbitMqMethodPattern {
     options?: RabbitMqHandlerOptions;
 }
 
-export type RabbitMqEventPattern = RabbitMqMethodPattern;
+export type RabbitEventPattern = RabbitMsPattern;
 
 export interface RabbitMqStreamResponse {
     chunk: unknown;
@@ -439,7 +439,7 @@ export class RabbitMqServer
     }
 
     #resolveHandlerOptions(
-        options: RabbitMqMethodPattern["options"],
+        options: RabbitMsPattern["options"],
     ): RabbitMqHandlerOptions & { timeout?: number } {
         const defaults = this.#config.handlerOptions;
         return {
@@ -504,9 +504,9 @@ export class RabbitMqServer
         });
     }
 
-    #parsePattern(pattern: string): RabbitMqMethodPattern {
+    #parsePattern(pattern: string): RabbitMsPattern {
         try {
-            return JSON.parse(pattern) as RabbitMqMethodPattern;
+            return JSON.parse(pattern) as RabbitMsPattern;
         } catch (err) {
             throw new Error(`Unsupported RabbitMQ message pattern: ${pattern}`, { cause: err });
         }

@@ -1,7 +1,7 @@
 import type { MsPattern } from "@nestjs/microservices";
-import type { RabbitMqMethodPattern } from "./rabbitmq.server.js";
+import type { RabbitMsPattern } from "./rabbitmq.server.js";
 
-export function normalizeRabbitPattern(pattern: MsPattern): RabbitMqMethodPattern {
+export function normalizeRabbitPattern(pattern: MsPattern): RabbitMsPattern {
     let obj: Record<string, any> = {};
 
     if (typeof pattern === "string") {

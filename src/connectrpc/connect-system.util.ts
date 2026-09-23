@@ -1,5 +1,5 @@
 import type { MsPattern } from "@nestjs/microservices";
-import type { ConnectRpcMethodPattern } from "./connect-rpc.server.js";
+import type { ConnectMsPattern } from "./connect-rpc.server.js";
 import { decapitalize } from "../common/util/system/system.util.js";
 
 function parseTimeoutMs(value: string): number | undefined {
@@ -56,7 +56,7 @@ export function getConnectClientDeadline(headers: Headers): Date | undefined {
     return new Date(Date.now() + timeoutMs);
 }
 
-export function normalizeConnectPattern(pattern: MsPattern): ConnectRpcMethodPattern {
+export function normalizeConnectPattern(pattern: MsPattern): ConnectMsPattern {
     let obj: any;
     if (typeof pattern === "string") {
         if (pattern.startsWith("{")) {

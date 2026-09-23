@@ -5,7 +5,7 @@ import type {
     ServerDuplexStream,
     sendUnaryData,
 } from "@grpc/grpc-js";
-import type { GrpcJsMethodPattern } from "./grpc-js.server.js";
+import type { GrpcMsPattern } from "./grpc-js.server.js";
 import type { MsPattern } from "@nestjs/microservices";
 import { decapitalize } from "../common/util/system/system.util.js";
 
@@ -22,7 +22,7 @@ export function isWritableCall(call: AnyGrpcCall): call is AnyGrpcCall & Writabl
     return typeof (call as any).write === "function" && typeof (call as any).end === "function";
 }
 
-export function normalizeGrpcPattern(pattern: MsPattern): GrpcJsMethodPattern {
+export function normalizeGrpcPattern(pattern: MsPattern): GrpcMsPattern {
     let obj: any;
     if (typeof pattern === "string") {
         if (pattern.startsWith("{")) {

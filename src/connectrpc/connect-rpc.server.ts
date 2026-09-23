@@ -51,10 +51,12 @@ const DEFAULT_TIMEOUT = 120_000;
 /** Maximum connect call deadline in milliseconds (24 hours) */
 const MAX_TIMEOUT = 24 * 60 * 60 * 1000;
 
-export interface ConnectRpcMethodPattern {
+export interface ConnectMsPattern {
     service?: string;
     method: string;
 }
+
+export type ConnectEventPattern = ConnectMsPattern;
 
 const createServerTimeoutInterceptor: (timeout: number) => Interceptor = (timeout: number) => {
     return (next) => async (req) => {
