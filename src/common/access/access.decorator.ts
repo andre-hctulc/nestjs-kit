@@ -4,10 +4,10 @@ import { ApiAccess } from "./api-access.class.js";
 import type { ApiAccessConstructor } from "./access.types.js";
 
 /**
- * Decorator to confirm api access
+ * Decorator to confirm api access in http context.
  * @param AccessClass `ApiAccess` classes to confirm against
  */
-export const Access = createParamDecorator<
+export const HttpAccess = createParamDecorator<
     ApiAccessConstructor | ApiAccessConstructor[] | undefined,
     ApiAccess
 >((AccessClass, ctx) => {
@@ -17,3 +17,8 @@ export const Access = createParamDecorator<
 
     return ApiAccess.confirm(access, AccessClass || ApiAccess);
 });
+
+/**
+ * @deprecated Renamed to {@link HttpAccess}
+ */
+export const Access = HttpAccess;

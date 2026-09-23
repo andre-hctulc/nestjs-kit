@@ -25,8 +25,9 @@ export function normalizeRabbitPattern(pattern: MsPattern): RabbitMqMethodPatter
     return {
         exchange: obj.exchange,
         routingKey: obj.routingKey,
-        queue: obj.queue,
         connection: obj.connection,
         options: obj.options,
+        queue: obj.queue,
+        queueSuffix: obj.queueSuffix,
     };
 }

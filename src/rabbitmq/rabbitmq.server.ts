@@ -76,6 +76,7 @@ export interface RabbitMqMethodPattern {
     connection?: string;
     routingKey: string;
     queue?: string;
+    queueSuffix?: string;
     options?: RabbitMqHandlerOptions;
 }
 
@@ -204,7 +205,15 @@ export class RabbitMqServer
         }
 
         const exchange = route.exchange ?? connection.exchange ?? "default";
-        const queue = route.queue ?? `${exchange}.${routingKey}`;
+
+        const queueSuffix = route.queueSuffix ?? "";
+        const normalizedQueueSuffix = queueSuffix
+            ? queueSuffix.startsWith(".")
+                ? queueSuffix
+                : `.${queueSuffix}`
+            : "";
+        const queue = route.queue ?? `${exchange}.${routingKey}${normalizedQueueSuffix}`;
+
         const setup = this.#resolveSetupOptions(connection, options.setup);
         const dl = setup.dl === false ? undefined : setup.dl;
         const dlq = dl ? (dl.dlq ?? `${queue}.dlq`) : undefined;
@@ -237,6 +246,7 @@ export class RabbitMqServer
             queue,
             (message) => this.#handleMessage(channel, handler, message, exchange, dlx, setup, options),
             {
+                // TODO When to ack/nack
                 noAck: false,
             },
         );
@@ -486,7 +496,7 @@ export class RabbitMqServer
                 cleanup();
                 resolve();
             };
-            
+
             const subscription = observable.subscribe({ next: onValue, complete, error: fail });
 
             signal?.addEventListener("abort", onAbort, { once: true });
