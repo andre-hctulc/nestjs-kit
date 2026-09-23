@@ -246,7 +246,7 @@ export class RabbitMqServer
             },
         );
 
-        this.#logger.log(`Registered RabbitMQ handler: ${exchange}.${routingKey}`);
+        this.#logger.log(`Registered RabbitMQ handler: ${queue}`);
     }
 
     async #handleMessage(
