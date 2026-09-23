@@ -179,6 +179,9 @@ export class ClientRabbitMq extends ClientProxy {
         let timer: ReturnType<typeof setTimeout> | undefined;
         const exchange = route.exchange ?? this.#config.exchange ?? "default";
 
+        const routingKey = route.routingKey ?? "";
+        const queue = route.queue;
+
         void this.connect()
             .then((channel) => {
                 const serializedPacket = this.serializer.serialize({ ...packet, id });
@@ -195,7 +198,7 @@ export class ClientRabbitMq extends ClientProxy {
                 }
                 const deadline = timeout === undefined ? undefined : Date.now() + timeout;
 
-                channel.publish(exchange, route.routingKey, Buffer.from(JSON.stringify(serializedPacket)), {
+                const publishOptions: Options.Publish = {
                     ...this.#config.setup?.publishOptions,
                     ...options,
                     replyTo: eventMode ? undefined : (this.#config.replyQueue ?? DIRECT_REPLY_TO),
@@ -206,7 +209,17 @@ export class ClientRabbitMq extends ClientProxy {
                         ...options?.headers,
                         ...(deadline === undefined ? {} : { [DEADLINE_HEADER]: deadline }),
                     },
-                });
+                };
+                const payload = Buffer.from(JSON.stringify(serializedPacket));
+
+                // send to queue directly if a queue is specified
+                if (queue) {
+                    channel.sendToQueue(queue, payload, publishOptions);
+                }
+                // Send to exchange using routing key
+                else {
+                    channel.publish(exchange, routingKey, payload, publishOptions);
+                }
 
                 if (eventMode) {
                     callback({ isDisposed: true });

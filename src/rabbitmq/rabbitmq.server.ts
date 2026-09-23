@@ -206,7 +206,7 @@ export class RabbitMqServer
 
         const exchange = route.exchange ?? connection.exchange ?? "default";
 
-        const queueSuffix = route.queueSuffix ?? "";
+        const queueSuffix = route.queueSuffix;
         const normalizedQueueSuffix = queueSuffix
             ? queueSuffix.startsWith(".")
                 ? queueSuffix
