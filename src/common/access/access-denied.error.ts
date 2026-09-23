@@ -1,9 +1,11 @@
-export interface AccessDeniedErrorOptions extends ErrorOptions {
-    missingPermissions?: string[];
-}
+import { ServiceError } from "../errors/service-error.class.js";
+import type { ServiceErrorOptions } from "../errors/service-error.types.js";
 
-export class AccessDeniedError extends Error {
-    constructor(message?: string, options?: AccessDeniedErrorOptions) {
-        super(message || "Access denied", options);
+export class AccessDeniedError extends ServiceError {
+    constructor(message?: string, options?: ServiceErrorOptions) {
+        super(
+            message || "Access denied",
+            ServiceError.opts({ errorCode: "ACCESS_DENIED", statusCode: 403 }, options),
+        );
     }
 }
