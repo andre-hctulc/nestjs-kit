@@ -15,7 +15,7 @@ import type {
     RabbitMqResponse,
     RabbitMqStreamResponse,
 } from "./rabbitmq.server.js";
-import { normalizeRabbitPattern } from "./rabbit-system.util.js";
+import { normalizeQueueSuffix, normalizeRabbitPattern } from "./rabbit-system.util.js";
 
 const DIRECT_REPLY_TO = "amq.rabbitmq.reply-to";
 const DEADLINE_HEADER = "x-rabbitmq-deadline";
@@ -174,24 +174,34 @@ export class ClientRabbitMq extends ClientProxy {
         options?: RabbitMqSendOptions,
         eventMode?: boolean,
     ): () => void {
-        const id = randomUUID();
         const route = normalizeRabbitPattern(packet.pattern);
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        const exchange = route.exchange ?? this.#config.exchange ?? "default";
 
+        const exchange = route.exchange ?? this.#config.exchange ?? "default";
         const routingKey = route.routingKey ?? "";
-        const queue = route.queue;
+
+        const normalizedQueueSuffix = normalizeQueueSuffix(route.queueSuffix);
+
+        /**
+         * If this is given, sendToQuery is used, publish otherwise.
+         * If a queueSuffix is provided, it will be appended to the exchange and routing key to form the queue.
+         */
+        const queue =
+            route.queue ??
+            (normalizedQueueSuffix ? `${exchange}.${routingKey}${normalizedQueueSuffix}` : null);
+
+        const reqId = randomUUID();
+        let timer: NodeJS.Timeout | undefined;
 
         void this.connect()
             .then((channel) => {
-                const serializedPacket = this.serializer.serialize({ ...packet, id });
-                this.#pendingReplies.set(id, callback);
+                const serializedPacket = this.serializer.serialize({ ...packet, id: reqId });
+                this.#pendingReplies.set(reqId, callback);
 
                 const timeout = options?.timeout ?? this.#config.handlerOptions?.timeout;
 
                 if (timeout !== undefined) {
                     timer = setTimeout(() => {
-                        if (this.#pendingReplies.delete(id)) {
+                        if (this.#pendingReplies.delete(reqId)) {
                             callback({ err: new Error("RabbitMQ request timed out"), isDisposed: true });
                         }
                     }, timeout);
@@ -202,7 +212,7 @@ export class ClientRabbitMq extends ClientProxy {
                     ...this.#config.setup?.publishOptions,
                     ...options,
                     replyTo: eventMode ? undefined : (this.#config.replyQueue ?? DIRECT_REPLY_TO),
-                    correlationId: eventMode ? undefined : id,
+                    correlationId: eventMode ? undefined : reqId,
                     contentType: "application/json",
                     headers: {
                         ...this.#config.setup?.publishOptions?.headers,
@@ -229,7 +239,7 @@ export class ClientRabbitMq extends ClientProxy {
 
         return () => {
             if (timer) clearTimeout(timer);
-            this.#pendingReplies.delete(id);
+            this.#pendingReplies.delete(reqId);
         };
     }
 

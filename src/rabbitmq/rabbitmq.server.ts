@@ -18,7 +18,7 @@ import {
     resolveFinalTimeout,
 } from "../common/util/system/system.util.js";
 import { toErrorShape, type ErrorShape } from "../common/errors/index.js";
-import { normalizeRabbitPattern } from "./rabbit-system.util.js";
+import { normalizeQueueSuffix, normalizeRabbitPattern } from "./rabbit-system.util.js";
 
 export interface RabbitMqDlOptions {
     /**
@@ -206,12 +206,7 @@ export class RabbitMqServer
 
         const exchange = route.exchange ?? connection.exchange ?? "default";
 
-        const queueSuffix = route.queueSuffix;
-        const normalizedQueueSuffix = queueSuffix
-            ? queueSuffix.startsWith(".")
-                ? queueSuffix
-                : `.${queueSuffix}`
-            : "";
+        const normalizedQueueSuffix = normalizeQueueSuffix(route.queueSuffix);
         const queue = route.queue ?? `${exchange}.${routingKey}${normalizedQueueSuffix}`;
 
         const setup = this.#resolveSetupOptions(connection, options.setup);

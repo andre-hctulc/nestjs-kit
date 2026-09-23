@@ -31,3 +31,8 @@ export function normalizeRabbitPattern(pattern: MsPattern): RabbitMsPattern {
         queueSuffix: obj.queueSuffix,
     };
 }
+
+export function normalizeQueueSuffix(queueSuffix: string | undefined) {
+    if (!queueSuffix) return "";
+    return queueSuffix ? (queueSuffix.startsWith(".") ? queueSuffix : `.${queueSuffix}`) : "";
+}
