@@ -10,3 +10,5 @@ index.ts
 docs
 scripts
 jest.config.mjs
+pnpm-lock.yaml
+pnpm-workspace.yaml
