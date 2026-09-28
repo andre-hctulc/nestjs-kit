@@ -1,6 +1,6 @@
 {
     "name": "@dre44/nestjs-kit",
-    "version": "0.78.0",
+    "version": "0.79.0",
     "description": "Some NestJS utility",
     "packageManager": "pnpm@11.13.1",
     "main": "dist/index.js",
