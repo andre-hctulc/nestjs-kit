@@ -54,8 +54,6 @@ export class ClientRabbitMq extends ClientProxy {
     constructor(config: ClientRabbitMqConfig) {
         super();
         this.#config = config;
-        this.initializeSerializer({});
-        this.initializeDeserializer({});
     }
 
     async connect(): Promise<Channel> {
@@ -194,7 +192,7 @@ export class ClientRabbitMq extends ClientProxy {
 
         void this.connect()
             .then((channel) => {
-                const serializedPacket = this.serializer.serialize({ ...packet, id: reqId });
+                const serializedPacket = { ...packet, id: reqId };
                 this.#pendingReplies.set(reqId, callback);
 
                 const timeout = options?.timeout ?? this.#config.handlerOptions?.timeout;

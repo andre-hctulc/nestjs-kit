@@ -30,9 +30,6 @@ export class ClientConnectRpc extends ClientProxy {
         if (!this.#desc || this.#desc.length === 0) {
             throw new Error("No Connect service definitions provided.");
         }
-
-        this.initializeSerializer({});
-        this.initializeDeserializer({});
     }
 
     override async connect(): Promise<void> {
@@ -159,7 +156,9 @@ export class ClientConnectRpc extends ClientProxy {
                 }
                 if (!cancelled) callback({ isDisposed: true });
             })
-            .catch((err) => !cancelled && callback({ err, isDisposed: true }));
+            .catch((err) => {
+                if (!cancelled) callback({ err, isDisposed: true });
+            });
 
         return () => {
             cancelled = true;
