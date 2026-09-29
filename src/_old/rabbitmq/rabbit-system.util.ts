@@ -28,5 +28,11 @@ export function normalizeRabbitPattern(pattern: MsPattern): RabbitMsPattern {
         connection: obj.connection,
         options: obj.options,
         queue: obj.queue,
+        queueSuffix: obj.queueSuffix,
     };
+}
+
+export function normalizeQueueSuffix(queueSuffix: string | undefined) {
+    if (!queueSuffix) return "";
+    return queueSuffix ? (queueSuffix.startsWith(".") ? queueSuffix : `.${queueSuffix}`) : "";
 }

@@ -15,7 +15,7 @@ import type {
     RabbitMqResponse,
     RabbitMqStreamResponse,
 } from "./rabbitmq.server.js";
-import { normalizeRabbitPattern } from "./rabbit-system.util.js";
+import { normalizeQueueSuffix, normalizeRabbitPattern } from "./rabbit-system.util.js";
 
 const DIRECT_REPLY_TO = "amq.rabbitmq.reply-to";
 const DEADLINE_HEADER = "x-rabbitmq-deadline";
@@ -177,10 +177,15 @@ export class ClientRabbitMq extends ClientProxy {
         const exchange = route.exchange ?? this.#config.exchange ?? "default";
         const routingKey = route.routingKey ?? "";
 
+        const normalizedQueueSuffix = normalizeQueueSuffix(route.queueSuffix);
+
         /**
          * If this is given, sendToQuery is used, publish otherwise.
+         * If a queueSuffix is provided, it will be appended to the exchange and routing key to form the queue.
          */
-        const queue = route.queue;
+        const queue =
+            route.queue ??
+            (normalizedQueueSuffix ? `${exchange}.${routingKey}${normalizedQueueSuffix}` : null);
 
         const reqId = randomUUID();
         let timer: NodeJS.Timeout | undefined;
