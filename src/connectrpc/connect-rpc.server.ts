@@ -189,7 +189,7 @@ export class ConnectRpcServer
                     method.methodKind === "server_streaming" || method.methodKind === "bidi_streaming";
                 impl[method.localName] = this.#handle(handler, isStreaming, method.input, method.output);
                 this.#logger.log(
-                    `Registered Connect method [MessagePattern].${serviceDesc.typeName}.${method.localName}`,
+                    `Registered Connect method ${serviceDesc.typeName}.${method.localName}`,
                 );
             }
 

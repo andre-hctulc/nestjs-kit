@@ -56,6 +56,9 @@ export interface RabbitMqConnection {
 }
 
 export interface RabbitMqServerConfig {
+    /**
+     * The default connection name is "default".
+     */
     connection: RabbitMqConnection | Record<string, RabbitMqConnection>;
     /** Shared setup options */
     setup?: RabbitMqHandlerSetupOptions;
@@ -217,9 +220,11 @@ export class RabbitMqServer
         if (dlx) {
             await channel.assertExchange(dlx, "topic", { durable: true, ...dl?.dlxOptions });
         }
+
+        const durable = setup.queueOptions?.durable ?? true;
         await channel.assertQueue(queue, {
-            durable: true,
             ...setup.queueOptions,
+            durable,
             arguments: {
                 ...setup.queueOptions?.arguments,
                 ...(dlx
@@ -244,7 +249,7 @@ export class RabbitMqServer
             },
         );
 
-        this.#logger.log(`Registered RabbitMQ handler: ${queue}`);
+        this.#logger.log(`Registered RabbitMQ handler: ${queue}${durable ? "" : " *"}`);
     }
 
     async #handleMessage(
