@@ -2,7 +2,6 @@ import { RpcException } from "@nestjs/microservices";
 import type { ErrorShape } from "../common/errors/error-shape.interface.js";
 import type { ServiceErrorDetails, ServiceErrorOptions } from "../common/index.js";
 import { mergeOptions, mergeTags } from "../common/errors/service-error.util.js";
-import { Code } from "@connectrpc/connect";
 
 export class RabbitServiceError extends RpcException implements ErrorShape {
     static opts = mergeOptions;
@@ -16,8 +15,7 @@ export class RabbitServiceError extends RpcException implements ErrorShape {
 
     constructor(message: string, options: ServiceErrorOptions = {}) {
         const errorCode = options.errorCode || "RABBIT_SERVICE_ERROR";
-        // grpc error
-        const statusCode = options.statusCode ?? Code.Internal;
+        const statusCode = options.statusCode ?? 500;
 
         const details: ServiceErrorDetails = {
             ...options.details,
