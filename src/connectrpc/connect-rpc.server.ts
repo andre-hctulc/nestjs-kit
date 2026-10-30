@@ -21,8 +21,6 @@ import http2, { type ServerOptions } from "node:http2";
 import { isObservable } from "rxjs";
 import { unwrapBySchema, wrapBySchema } from "./value.util.js";
 import {
-    capitalize,
-    decapitalize,
     firstValueFromObservable,
     isAsyncGenerator,
     isAsyncIterable,
@@ -33,7 +31,6 @@ import {
 } from "../common/util/system/system.util.js";
 import { getConnectClientDeadline, normalizeConnectPattern } from "./connect-system.util.js";
 import { mapToGrpcStatusCode } from "../common/index.js";
-import { normalizeGrpcPattern } from "../grpc-js/grpc-system.util.js";
 
 export interface ConnectRpcServerConfig {
     address: string;
@@ -188,9 +185,7 @@ export class ConnectRpcServer
                 const isStreaming =
                     method.methodKind === "server_streaming" || method.methodKind === "bidi_streaming";
                 impl[method.localName] = this.#handle(handler, isStreaming, method.input, method.output);
-                this.#logger.log(
-                    `Registered Connect method ${serviceDesc.typeName}.${method.localName}`,
-                );
+                this.#logger.log(`Registered Connect method ${serviceDesc.typeName}.${method.localName}`);
             }
 
             router.service(serviceDesc, impl);
