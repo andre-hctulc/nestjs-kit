@@ -1,6 +1,10 @@
 import { createParamDecorator } from "@nestjs/common";
 import { ApiAccess, type ApiAccessConstructor } from "../common/index.js";
 
+/**
+ * Looks up the API access from the RPC context object (`<context>.apiAccess`) and verifies it.
+ * @param AccessClass `ApiAccess` classes to confirm against
+ */
 export const RpcAccess = createParamDecorator<
     ApiAccessConstructor | ApiAccessConstructor[] | undefined,
     ApiAccess

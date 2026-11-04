@@ -1,4 +1,4 @@
-export * from "./access.decorator.js";
+export * from "./http-access.decorator.js";
 export * from "./api-access.class.js";
 export * from "./permissions.types.js";
 export * from "./access-denied.filter.js";

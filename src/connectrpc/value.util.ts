@@ -1,4 +1,4 @@
-import { fromJson, type DescField, type DescMessage, type JsonValue } from "@bufbuild/protobuf";
+import { fromJson, toJson, type DescField, type DescMessage, type JsonValue, type Message } from "@bufbuild/protobuf";
 import type { ListValue, Value } from "@bufbuild/protobuf/wkt";
 import { ListValueSchema, StructSchema, ValueSchema } from "@bufbuild/protobuf/wkt";
 import { getProperty, setProperty } from "dot-prop";
@@ -55,6 +55,18 @@ function unwrapProtoMessage<T = unknown>(value: T): UnwrapValue<T> {
             return unwrapValue(message as Value) as UnwrapValue<T>;
         case "google.protobuf.ListValue":
             return unwrapValue(message as ListValue) as UnwrapValue<T>;
+        case "google.protobuf.Struct": {
+            const fields = message.fields as Record<string, Value> | undefined;
+            if (!fields) {
+                return value as UnwrapValue<T>;
+            }
+
+            const obj: Record<string, unknown> = {};
+            for (const [key, fieldValue] of Object.entries(fields)) {
+                obj[key] = unwrapValue(fieldValue);
+            }
+            return obj as UnwrapValue<T>;
+        }
         default:
             return value as UnwrapValue<T>;
     }
@@ -127,6 +139,10 @@ export function unwrapBySchema<T>(value: T, schema: DescMessage | DescField | un
     }
 
     if (schema.kind === "message") {
+        if (isWrappedProtoMessage(value, schema.typeName)) {
+            return toJson(schema, value) as UnwrapValue<T>;
+        }
+
         if (schema.typeName === "google.protobuf.Value") {
             return unwrapProtoMessage(value);
         }
@@ -136,14 +152,18 @@ export function unwrapBySchema<T>(value: T, schema: DescMessage | DescField | un
         }
 
         if (schema.typeName === "google.protobuf.Struct") {
-            return value as UnwrapValue<T>;
+            return unwrapProtoMessage(value);
         }
 
         if (Array.isArray(value)) {
             return value.map((item) => unwrapBySchema(item, schema)) as UnwrapValue<T>;
         }
 
-        const copy: any = { ...(value as Record<string, unknown>) };
+        const copy = Object.fromEntries(
+            Object.entries(value as Record<string, unknown>).filter(
+                ([key]) => !["$typeName", "$unknown", "$extensions"].includes(key),
+            ),
+        );
 
         for (const field of schema.fields) {
             const fieldValue = copy[field.localName];
@@ -154,7 +174,7 @@ export function unwrapBySchema<T>(value: T, schema: DescMessage | DescField | un
             copy[field.localName] = unwrapField(fieldValue, field);
         }
 
-        return copy;
+        return copy as UnwrapValue<T>;
     }
 
     if (schema.kind === "field") {
@@ -240,7 +260,7 @@ function unwrapField(value: unknown, field: DescField): unknown {
     return value;
 }
 
-function isWrappedProtoMessage(value: unknown, typeName: string): boolean {
+function isWrappedProtoMessage(value: unknown, typeName: string): value is Message {
     return Boolean(
         value && typeof value === "object" && !Array.isArray(value) && (value as any).$typeName === typeName,
     );

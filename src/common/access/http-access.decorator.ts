@@ -4,7 +4,7 @@ import { ApiAccess } from "./api-access.class.js";
 import type { ApiAccessConstructor } from "./access.types.js";
 
 /**
- * Decorator to confirm api access in http context.
+ * Verifies and returns the API access for the current HTTP request.
  * @param AccessClass `ApiAccess` classes to confirm against
  */
 export const HttpAccess = createParamDecorator<

@@ -1,5 +1,5 @@
 import { fromJson } from "@bufbuild/protobuf";
-import { ValueSchema } from "@bufbuild/protobuf/wkt";
+import { StructSchema, ValueSchema } from "@bufbuild/protobuf/wkt";
 import { ChunkSchema, ExhyveExtensionRuntime, type Chunk } from "./generated/gateway_pb.js";
 import {
     type UnwrapValue,
@@ -105,9 +105,13 @@ describe("connect-rpc value wrapping", () => {
 
     it("keeps non-wrapper Struct fields as plain objects", () => {
         const inputMessage = {
+            $typeName: "fdc.exhyve.runtime.v1.ExecuteCommandRequest",
+            $unknown: "protobuf metadata",
             commandName: "test",
             params: { plain: "object", list: [1, 2, 3] },
             extension: {
+                $typeName: "fdc.exhyve.runtime.v1.Extension",
+                $unknown: "protobuf metadata",
                 name: "ext",
                 namespace: "fdc",
                 version: "1.0.0",
@@ -115,10 +119,30 @@ describe("connect-rpc value wrapping", () => {
         };
 
         const unwrapped = unwrapBySchema(inputMessage, executeCommand.input) as {
+            commandName: string;
             params: unknown;
+            extension: Record<string, unknown>;
         };
 
         expect(unwrapped.params).toEqual({ plain: "object", list: [1, 2, 3] });
+        expect(unwrapped).not.toHaveProperty("$typeName");
+        expect(unwrapped).not.toHaveProperty("$unknown");
+        expect(unwrapped.extension).not.toHaveProperty("$typeName");
+        expect(unwrapped.extension).not.toHaveProperty("$unknown");
+    });
+
+    it("unwraps google.protobuf.Struct messages into plain js objects", () => {
+        const wrapped = fromJson(StructSchema, {
+            nested: { ok: true },
+            items: [1, "two"],
+            "$custom": "preserved",
+        });
+
+        expect(unwrapBySchema(wrapped, paramsFieldSchema)).toEqual({
+            nested: { ok: true },
+            items: [1, "two"],
+            "$custom": "preserved",
+        });
     });
 
     it("wraps Struct field descriptor values and leaves plain input unchanged on unwrap", () => {
@@ -144,5 +168,19 @@ describe("connect-rpc value wrapping", () => {
 
         expect((wrapped as { data?: { $typeName?: string } }).data?.$typeName).toBe("google.protobuf.Value");
         expect(unwrapBySchema(wrapped, ChunkSchema)).toEqual(plainChunk);
+    });
+
+    it("uses Buf's JSON conversion for generated protobuf messages", () => {
+        const message = fromJson(ChunkSchema, {
+            done: true,
+            stream: false,
+            data: { "$custom": "preserved" },
+        });
+
+        expect(unwrapBySchema(message, ChunkSchema)).toEqual({
+            done: true,
+            stream: false,
+            data: { "$custom": "preserved" },
+        });
     });
 });
