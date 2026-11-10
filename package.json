@@ -8,7 +8,7 @@
     "exports": {
         ".": "./dist/index.js",
         "./connectrpc": "./dist/connectrpc/index.js",
-        "./fastify-multipart": "./dist/fastify-multipart/index.js",
+        "./multipart": "./dist/multipart/index.js",
         "./grpc-js": "./dist/grpc-js/index.js",
         "./interactive": "./dist/interactive/index.js",
         "./rabbitmq": "./dist/rabbitmq/index.js",
