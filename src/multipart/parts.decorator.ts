@@ -6,11 +6,11 @@ import type { Multipart, MultipartFile } from "@fastify/multipart";
 /**
  * Extracts `AsyncIterableIterator<Multipart> | null` using `req.files()`.
  */
-export const Parts = (options: MultipartDecoratorOptions) => {
+export const Parts = (options?: MultipartDecoratorOptions) => {
     return createParamDecorator(
         (_data: any, ctx: ExecutionContext): AsyncIterableIterator<Multipart> | null => {
             const req: FastifyRequest = ctx.switchToHttp().getRequest();
-            const { required, ...multipartOptions } = options;
+            const { required, ...multipartOptions } = options || {};
 
             if (!req.isMultipart()) {
                 if (required) {
@@ -21,5 +21,5 @@ export const Parts = (options: MultipartDecoratorOptions) => {
 
             return req.parts(multipartOptions);
         },
-    );
+    )();
 };

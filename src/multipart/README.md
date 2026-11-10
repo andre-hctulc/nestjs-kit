@@ -6,19 +6,17 @@ NestJS parameter decorators for [`@fastify/multipart`](https://github.com/fastif
 await app.register(multipart);
 ```
 
-| Factory | Uses | Injects |
+| Decorator | Uses | Injects |
 | --- | --- | --- |
 | `FilePart(options)` | `req.file()` | First `MultipartFile` or `null` |
 | `FileParts(options?)` | `req.files()` | `AsyncIterableIterator<MultipartFile>` or `null` |
 | `Parts(options)` | `req.parts()` | `AsyncIterableIterator<Multipart>` or `null` |
 
-Each factory returns a parameter decorator:
+Use each directly on a controller parameter:
 
 ```ts
-const Upload = FilePart({ required: true });
-
 @Post()
-async upload(@Upload() file: MultipartFile) {
+async upload(@FilePart({ required: true }) file: MultipartFile) {
     await pipeline(file.file, createWriteStream(destination));
 }
 ```
@@ -35,10 +33,11 @@ multipart request. Otherwise, each returns `null` for a non-multipart request.
 `Parts` yields field and file parts; discriminate using `part.type`:
 
 ```ts
-const UploadParts = Parts({ limits: { fileSize: 5 * 1024 * 1024 } });
-
 @Post()
-async upload(@UploadParts() parts: AsyncIterableIterator<Multipart> | null) {
+async upload(
+    @Parts({ limits: { fileSize: 5 * 1024 * 1024 } })
+    parts: AsyncIterableIterator<Multipart> | null,
+) {
     if (!parts) return;
 
     for await (const part of parts) {

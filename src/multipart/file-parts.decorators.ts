@@ -19,5 +19,5 @@ export const FileParts = (options?: MultipartDecoratorOptions) => {
             }
             return req.files(multipartOptions);
         },
-    );
+    )();
 };

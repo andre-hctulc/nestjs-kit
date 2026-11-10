@@ -6,10 +6,10 @@ import type { MultipartDecoratorOptions } from "./multipart-decorator-options.in
 /**
  * Extracts `MultipartFile | null` using `req.file()`.
  */
-export const FilePart = (options: MultipartDecoratorOptions) => {
+export const FilePart = (options?: MultipartDecoratorOptions) => {
     return createParamDecorator(async (_data: any, ctx: ExecutionContext): Promise<MultipartFile | null> => {
         const req: FastifyRequest = ctx.switchToHttp().getRequest();
-        const { required, ...multipartOptions } = options;
+        const { required, ...multipartOptions } = options || {};
 
         if (!req.isMultipart()) {
             if (required) {
@@ -25,5 +25,5 @@ export const FilePart = (options: MultipartDecoratorOptions) => {
         }
 
         return file || null;
-    });
+    })();
 };
