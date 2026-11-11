@@ -18,7 +18,8 @@ function checkOptions(options: RawUploadOptions): void {
 
 /**
  * Expose the raw request body as a size-limited Readable through @Body().
- * Requires UploadModule; the handler must consume the stream and propagate errors.
+ * Requires UploadModule; consume the stream or explicitly abandon it with destroy().
+ * Propagate consumption errors. The package owns HTTP transport cleanup.
  */
 export function RawUpload(options: RawUploadOptions): MethodDecorator {
     checkOptions(options);

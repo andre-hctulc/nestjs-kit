@@ -9,7 +9,7 @@ export default {
             "ts-jest",
             {
                 useESM: true,
-                tsconfig: "<rootDir>/tsconfig.test.json",
+                tsconfig: "<rootDir>/test/tsconfig.json",
             },
         ],
     },

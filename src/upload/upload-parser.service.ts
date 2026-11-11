@@ -7,7 +7,7 @@ import {
 import { HttpAdapterHost } from "@nestjs/core";
 import { errorCodes, type FastifyInstance, type FastifyRequest } from "fastify";
 import type { IncomingMessage } from "node:http";
-import { Readable } from "node:stream";
+import { Transform, type Readable } from "node:stream";
 import type { RawUploadOptions } from "./raw-upload.decorator.js";
 
 /**
@@ -16,6 +16,7 @@ import type { RawUploadOptions } from "./raw-upload.decorator.js";
 @Injectable()
 export class UploadParserService implements OnModuleInit {
     #fastify: FastifyInstance;
+    #uploads = new WeakMap<FastifyRequest, { payload: Readable; stream: Readable; cleanup: () => void }>();
 
     // Register before Nest installs routes; onModuleInit runs too late for onRoute.
     constructor(adapterHost: HttpAdapterHost) {
@@ -25,6 +26,31 @@ export class UploadParserService implements OnModuleInit {
             if (route.config?.rawUpload) {
                 route.bodyLimit = route.config.rawUpload.maxSize;
             }
+        });
+        fastify.addHook("onRequest", (request, reply, done) => {
+            if (request.routeOptions.config.rawUpload) {
+                reply.raw.once("close", () => this.#uploads.get(request)?.cleanup());
+            }
+            done();
+        });
+        fastify.addHook("preValidation", async (request) => {
+            const upload = request.routeOptions.config.rawUpload;
+            // Fastify skips content-type parsing for an empty request without Content-Type.
+            if (upload && request.body === undefined) {
+                request.body = this.#stream(request, request.raw, Number(request.headers["content-length"]), upload);
+            }
+        });
+        fastify.addHook("onSend", (request, reply, body, done) => {
+            if (request.routeOptions.config.rawUpload) {
+                const upload = this.#uploads.get(request);
+                if (!request.raw.readableEnded || (upload && !upload.payload.readableEnded)) {
+                    // Node closes after flushing the response; destroying the socket here loses errors.
+                    reply.header("connection", "close");
+                    reply.raw.shouldKeepAlive = false;
+                }
+                upload?.stream.destroy();
+            }
+            done(null, body);
         });
     }
 
@@ -37,15 +63,12 @@ export class UploadParserService implements OnModuleInit {
         // replace default content type parser with custom one to handle raw uploads and preserve existing behavior for JSON and text
         fastify.addContentTypeParser(
             ["application/json", "text/plain", "*"],
-            async (
-                request: FastifyRequest,
-                payload: IncomingMessage & { receivedEncodedLength?: number },
-            ) => {
+            async (request: FastifyRequest, payload: IncomingMessage & { receivedEncodedLength?: number }) => {
                 const contentLength = Number(request.headers["content-length"]);
 
                 const upload = request.routeOptions.config.rawUpload;
                 if (upload) {
-                    return this.#stream(payload, contentLength, upload);
+                    return this.#stream(request, payload, contentLength, upload);
                 }
 
                 return this.#textOrJson(request, payload, contentLength);
@@ -54,6 +77,7 @@ export class UploadParserService implements OnModuleInit {
     }
 
     #stream(
+        request: FastifyRequest,
         payload: IncomingMessage & { receivedEncodedLength?: number },
         contentLength: number,
         upload: RawUploadOptions,
@@ -61,32 +85,65 @@ export class UploadParserService implements OnModuleInit {
         if (contentLength > upload.maxSize) {
             throw new PayloadTooLargeException();
         }
-        const stream = Readable.from(
-            (async function* () {
-                let size = 0;
-                try {
-                    for await (const chunk of payload.iterator({ destroyOnReturn: false })) {
-                        const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-                        size += bytes.length;
-                        if (size > upload.maxSize || (payload.receivedEncodedLength ?? 0) > upload.maxSize) {
-                            throw new PayloadTooLargeException();
-                        }
-                        yield bytes;
-                    }
-                    if (
-                        !Number.isNaN(contentLength) &&
-                        (payload.receivedEncodedLength || size) !== contentLength
-                    ) {
-                        throw new errorCodes.FST_ERR_CTP_INVALID_CONTENT_LENGTH();
-                    }
-                } finally {
-                    if (!payload.readableEnded) {
-                        payload.pause();
-                    }
+        let size = 0;
+        const stream = new Transform({
+            transform(chunk: Buffer, _encoding, done) {
+                size += chunk.length;
+                if (size > upload.maxSize || (payload.receivedEncodedLength ?? 0) > upload.maxSize) {
+                    done(new PayloadTooLargeException());
+                    return;
                 }
-            })(),
-            { objectMode: false },
-        );
+                done(null, chunk);
+            },
+            flush(done) {
+                if ((payload.receivedEncodedLength ?? 0) > upload.maxSize) {
+                    done(new PayloadTooLargeException());
+                    return;
+                }
+                if (!Number.isNaN(contentLength) && (payload.receivedEncodedLength || size) !== contentLength) {
+                    done(new errorCodes.FST_ERR_CTP_INVALID_CONTENT_LENGTH());
+                    return;
+                }
+                done();
+            },
+            destroy(error, done) {
+                payload.unpipe(stream);
+                if (!payload.readableEnded) {
+                    payload.pause();
+                }
+                done(error);
+            },
+        });
+        // A guard may reject before anyone subscribes. Active consumers still receive the stored error.
+        stream.on("error", () => {});
+
+        const onError = (error: Error) => stream.destroy(error);
+        const onAbort = () => stream.destroy(new Error("Raw upload request aborted"));
+        const onPayloadClose = () => {
+            if (!payload.readableEnded) {
+                stream.destroy(new Error("Raw upload payload closed prematurely"));
+            }
+        };
+        const cleanup = () => {
+            payload.removeListener("error", onError);
+            payload.removeListener("close", onPayloadClose);
+            request.raw.removeListener("aborted", onAbort);
+            request.raw.removeListener("error", onError);
+            this.#uploads.delete(request);
+            stream.destroy();
+        };
+        payload.on("error", onError);
+        payload.on("close", onPayloadClose);
+        request.raw.on("aborted", onAbort);
+        if (payload !== request.raw) {
+            request.raw.on("error", onError);
+        }
+        this.#uploads.set(request, { payload, stream, cleanup });
+        if (request.raw.aborted || payload.destroyed) {
+            onAbort();
+        } else {
+            payload.pipe(stream);
+        }
         return stream;
     }
 
