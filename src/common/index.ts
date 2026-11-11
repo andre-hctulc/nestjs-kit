@@ -9,3 +9,4 @@ export * from "./middleware/index.js";
 export * from "./errors/index.js";
 export * from "./access/index.js";
 export * from "./content-types/index.js";
+export * from "../upload/index.js";
