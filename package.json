@@ -1,6 +1,6 @@
 {
     "name": "@dre44/nestjs-kit",
-    "version": "0.89.0",
+    "version": "0.90.0",
     "description": "Some NestJS utility",
     "packageManager": "pnpm@12.8.1",
     "main": "dist/index.js",
@@ -49,6 +49,7 @@
         "@nestjs/common": "12",
         "@nestjs/core": "^12",
         "@nestjs/microservices": "^12",
+        "@nestjs/platform-fastify": "^12",
         "@nestjs/websockets": "^12",
         "amqplib": "^2.0.1",
         "commander": "^15.0.0",
@@ -57,8 +58,7 @@
         "openid-client": "^6.5.0",
         "rxjs": "^7",
         "socket.io": "^4.8.1",
-        "zod": "^4",
-        "@nestjs/platform-fastify": "^12"
+        "zod": "^4"
     },
     "peerDependenciesMeta": {
         "amqplib": {
