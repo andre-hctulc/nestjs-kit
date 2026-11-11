@@ -14,7 +14,8 @@
         "./rabbitmq": "./dist/rabbitmq/index.js",
         "./rpc": "./dist/rpc/index.js",
         "./ws": "./dist/ws/index.js",
-        "./zod": "./dist/zod/index.js"
+        "./zod": "./dist/zod/index.js",
+        "./upload": "./dist/upload/index.js"
     },
     "scripts": {
         "tc": "tsc --noEmit",
